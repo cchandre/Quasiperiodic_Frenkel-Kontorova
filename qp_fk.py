@@ -10,17 +10,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 N = 2 ** 10
-alpha = xp.array([1.246979603717467, 2.801937735804838])
-
-N1 = 1024
-N2 = 1024
-eps1 = xp.linspace(0.007, 0.014, N1)
-eps2 = xp.linspace(0.0025, 0.0038, N2)
+alpha = [1.246979603717467, 2.801937735804838]
 potential = 'pot1'
-
-threshold = 1e-7
+n_eps = 1024
+eps_vecs = xp.linspace([0.007, 0.0025], [0.014,  0.0038], n_eps)
 TolMax = 1e5
 TolMin = 1e-5
+threshold = 1e-7
 
 dim = len(alpha)
 zero_ = dim * (0,)
@@ -32,7 +28,7 @@ lk_alpha_nu = 2.0 * (xp.cos(alpha_nu) - 1.0)
 ilk_alpha_nu = xp.divide(1.0, lk_alpha_nu, where=lk_alpha_nu!=0)
 sml_div = exp_alpha_nu - 1.0
 sml_div = xp.divide(1.0, sml_div, where=sml_div!=0)
-ind_phi = dim * (2.0 * xp.pi * xp.arange(0, N) / N,)
+ind_phi = dim * (2.0 * xp.pi * xp.linspace(0.0, 1.0, N, endpoint=False),)
 phi = xp.meshgrid(*ind_phi, indexing='ij')
 threshold *= N**dim
 
@@ -46,7 +42,7 @@ def refine_h(h, lam, eps):
 	fft_h = xp.fft.fftn(h)
 	fft_h[xp.abs(fft_h) <= threshold] = 0.0
 	h_thresh = xp.fft.ifftn(fft_h)
-	arg_v = phi + 2.0 * xp.pi * xp.tensordot(alpha, h_thresh, axes=0)
+	arg_v = phi + 2.0 * xp.pi * xp.tensordot(xp.asarray(alpha), h_thresh, axes=0)
 	l = 1.0 + xp.fft.ifftn(1j * alpha_nu * fft_h)
 	epsilon = xp.fft.ifftn(lk_alpha_nu * fft_h) + lam + dv(arg_v, eps)
 	fft_l_eps = xp.fft.fftn(l * epsilon)
@@ -60,7 +56,7 @@ def refine_h(h, lam, eps):
 	del_l = xp.fft.ifftn((fft_wll + w0 * fft_ill) * sml_div.conj())
 	h = xp.real(h_thresh + del_l * l)
 	lam = xp.real(lam + delta)
-	arg_v = phi + 2.0 * xp.pi * xp.tensordot(alpha, h, axes=0)
+	arg_v = phi + 2.0 * xp.pi * xp.tensordot(xp.asarray(alpha), h, axes=0)
 	err = xp.abs(xp.fft.ifftn(lk_alpha_nu * xp.fft.fftn(h)) + lam + dv(arg_v, eps)).max()
 	return h, lam, err
 
@@ -72,12 +68,12 @@ def converge_point(eps1, eps2):
 	while TolMax >= err >= TolMin:
 		h, lam, err = refine_h(h, lam, xp.array([eps1, eps2]))
 		it_count += 1
-	if err <=TolMin:
+	if err <= TolMin:
 		it_count = 0
 	return [(err <= TolMin), it_count]
 
 def save_data(name, data, timestr):
-	mdic = dict({'alpha': alpha, 'N': N, 'threshold': threshold / N**dim, 'TolMin': TolMin, 'TolMax': TolMax, 'eps1': eps1, 'eps2': eps2, 'potential': potential})
+	mdic = dict({'alpha': alpha, 'N': N, 'threshold': threshold / N**dim, 'TolMin': TolMin, 'TolMax': TolMax, 'epsilon': eps_vecs, 'potential': potential})
 	mdic.update({'data': data})
 	today = date.today()
 	date_today = today.strftime(" %B %d, %Y\n")
@@ -90,12 +86,12 @@ def main():
 	num_cores = multiprocessing.cpu_count()
 	pool = multiprocessing.Pool(num_cores)
 	data = []
-	for epsilon2 in tqdm(eps2):
-		converge_point_ = partial(converge_point, eps2=epsilon2)
-		for result in pool.imap(converge_point_, iterable=eps1):
+	for eps2 in tqdm(eps_vecs[1]):
+		converge_point_ = partial(converge_point, eps2=eps2)
+		for result in pool.imap(converge_point_, iterable=eps_vecs[0]):
 			data.append(result)
 		save_data('qpFK_converge_region', data, timestr)
-	data = xp.array(data).reshape((N1, N2, 2))
+	data = xp.array(data).reshape((n_eps, n_eps, 2))
 	save_data('qpFK_converge_region', data, timestr)
 	plt.pcolor(data[:, :, 0])
 	plt.show()
