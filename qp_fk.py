@@ -38,7 +38,7 @@ def main():
 			data.append(result)
 		save_data('qpFK_converge_region', data, timestr, case)
 	data = xp.array(data).reshape((case.n_eps, case.n_eps, 2))
-	self.save_data('qpFK_converge_region', data, timestr, case)
+	save_data('qpFK_converge_region', data, timestr, case)
 	plt.pcolor(data[:, :, 0])
 	plt.show()
 
@@ -78,29 +78,26 @@ class qpFK:
 		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(xp.asarray(self.alpha), h_thresh, axes=0)
 		l = 1.0 + xp.fft.ifftn(1j * self.alpha_nu * fft_h)
 		epsilon = xp.fft.ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
-		fft_l_eps = xp.fft.fftn(l * epsilon)
+		fft_leps = xp.fft.fftn(l * epsilon)
 		fft_l = xp.fft.fftn(l)
-		delta = - fft_l_eps[self.zero_] / fft_l[self.zero_]
-		w = xp.fft.ifftn((delta * fft_l + fft_l_eps) * self.sml_div)
+		delta = - fft_leps[self.zero_] / fft_l[self.zero_]
+		w = xp.fft.ifftn((delta * fft_l + fft_leps) * self.sml_div)
 		ll = l * xp.fft.ifftn(xp.fft.fftn(l) * self.exp_alpha_nu.conj())
 		fft_wll = xp.fft.fftn(w / ll)
 		fft_ill = xp.fft.fftn(1.0 / ll)
 		w0 = - fft_wll[self.zero_] / fft_ill[self.zero_]
-		del_l = xp.fft.ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj())
-		h = xp.real(h_thresh + del_l * l)
+		dell = xp.fft.ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj())
+		h = xp.real(h_thresh + dell * l)
 		lam = xp.real(lam + delta)
 		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(xp.asarray(self.alpha), h, axes=0)
 		err = xp.abs(xp.fft.ifftn(self.lk_alpha_nu * xp.fft.fftn(h)) + lam + self.dv(arg_v, eps)).max()
 		return h, lam, err
 
 def save_data(name, data, timestr, case):
-	mdic = case.DictParams
-	mdic.update({'data': data})
-	today = date.today()
-	date_today = today.strftime(" %B %d, %Y\n")
-	email = 'cristel.chandre@univ-amu.fr'
-	mdic.update({'date': date_today, 'author': email})
-	savemat(name + '_' + timestr + '.mat', mdic)
+	case.DictParams.update({'data': data})
+	date_today = date.today().strftime(" %B %d, %Y\n")
+	case.DictParams.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
+	savemat(name + '_' + timestr + '.mat', case.DictParams)
 
 def converge_point(eps1, eps2, case):
 	h = case.initial_h([eps1, eps2])
