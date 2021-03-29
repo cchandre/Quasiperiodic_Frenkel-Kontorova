@@ -17,10 +17,10 @@ def main():
 		'n_eps': 256,
 		'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
 		'eps_point': [0.009, 0.0030],
-		'eps_dir': [0.004, 0.006, xp.pi/5],
-		'TolMax': 1e5,
-		'TolMin': 1e-5,
-		'threshold': 1e-7,
+		'eps_dir': [0.0, 0.01, xp.pi/4],
+		'TolMax': 1e6,
+		'TolMin': 1e-6,
+		'threshold': 1e-8,
 		'Precision': 64
 		}
 	alpha = dict_params['alpha']
@@ -32,7 +32,7 @@ def main():
 	case = qpFK(dv, dict_params)
 	#converge_region(xp.linspace(self.eps_region, case.n_eps), case)
 	#converge_point(case.eps_point[0], case.eps_point[1], case, gethull=True)
-	converge_dir(4, case)
+	converge_dir(4, case, output='critical')
 
 class qpFK:
 	def __init__(self, dv, dict_params):
@@ -116,15 +116,26 @@ def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 		it_count = 0
 	return [int(err <= case.TolMin), it_count]
 
-def converge_dir(r, case):
-	timestr = time.strftime("%Y%m%d_%H%M")
-	num_cores = multiprocess.cpu_count()
-	pool = multiprocess.Pool(num_cores)
-	data = []
-	converge_dir_ = lambda eps1: converge_point(eps1, eps1 * xp.tan(case.eps_dir[2]), case, getnorm=[True, r])
-	for result in tqdm(pool.imap(converge_dir_, iterable=xp.linspace(case.eps_dir[0], case.eps_dir[1], case.n_eps))):
-		data.append(result)
-	save_data('qpFK_converge_dir', xp.array(data).reshape((case.n_eps, 3)), timestr, case)
+def converge_dir(r, case, output='all'):
+	if output == 'all':
+		timestr = time.strftime("%Y%m%d_%H%M")
+		num_cores = multiprocess.cpu_count()
+		pool = multiprocess.Pool(num_cores)
+		data = []
+		converge_dir_ = lambda eps1: converge_point(eps1, eps1 * xp.tan(case.eps_dir[2]), case, getnorm=[True, r])
+		for result in tqdm(pool.imap(converge_dir_, iterable=xp.linspace(case.eps_dir[0], case.eps_dir[1], case.n_eps))):
+			data.append(result)
+		save_data('qpFK_converge_dir', xp.array(data).reshape((case.n_eps, 3)), timestr, case)
+	elif output == 'critical':
+		epsmin = case.eps_dir[0]
+		epsmax = case.eps_dir[1]
+		while xp.abs(epsmin - epsmax) >= case.TolMin:
+			epsmid = (epsmin + epsmax) / 2.0
+			if converge_point(epsmid, epsmid * case.eps_dir[2], case)[0]:
+				epsmin = epsmid
+			else:
+				epsmax = epsmid
+		print('Critical epsilon = {}'.format(epsmid))
 
 def converge_region(eps_region, case):
 	timestr = time.strftime("%Y%m%d_%H%M")
