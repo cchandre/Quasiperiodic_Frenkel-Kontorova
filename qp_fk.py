@@ -11,13 +11,13 @@ warnings.filterwarnings("ignore")
 
 def main():
 	dict_params = {
-		'N': 2 ** 10,
+		'N': 2 ** 8,
 		'alpha': [1.246979603717467, 2.801937735804838],
 		'potential': 'pot1',
-		'n_eps': 1024,
+		'n_eps': 30,
 		'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
 		'eps_point': [0.009, 0.0030],
-		'eps_dir': [0.001, 0.01, xp.pi/5],
+		'eps_dir': [0.0, 0.02, xp.pi/5],
 		'TolMax': 1e5,
 		'TolMin': 1e-5,
 		'threshold': 1e-7,
@@ -30,12 +30,9 @@ def main():
 		 + eps[1] * (alpha[0] * xp.sin(phi[0]) + alpha[1] * xp.sin(phi[1]))
 		}.get(dict_params['potential'], 'pot1')
 	case = qpFK(dv, dict_params)
-	converge_region(xp.linspace(self.eps_region, case.n_eps), case)
-	converge_point(case.eps_point[0], case.eps_point[1], case, gethull=True)
-	data = []
-	for i, eps1 in enumerate(xp.linspace(eps_dir[0], eps_dir[1], n_eps)):
-		data.appeconverge_point(eps1, eps1 * xp.tan(eps_dir[2]), case, getnorm=[True, 4])
-
+	#converge_region(xp.linspace(self.eps_region, case.n_eps), case)
+	#converge_point(case.eps_point[0], case.eps_point[1], case, gethull=True)
+	converge_dir(4, case)
 
 class qpFK:
 	def __init__(self, dv, dict_params):
@@ -94,7 +91,6 @@ class qpFK:
 		return xp.sqrt(xp.abs(ifftn(self.alpha_nu ** r * fftn(h)) ** 2).sum()),\
 			xp.sqrt(xp.abs(ifftn(self.alpha_perp_nu ** r * fftn(h)) ** 2).sum())
 
-
 def save_data(name, data, timestr, case):
 	case.DictParams.update({'data': data})
 	date_today = date.today().strftime(" %B %d, %Y\n")
@@ -118,6 +114,16 @@ def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 	if err <= case.TolMin:
 		it_count = 0
 	return [(err <= case.TolMin), it_count]
+
+def converge_dir(r, case):
+	timestr = time.strftime("%Y%m%d_%H%M")
+	num_cores = multiprocessing.cpu_count()
+	pool = multiprocessing.Pool(num_cores)
+	data = []
+	converge_dir_ = lambda eps1: converge_point(eps1, eps2=eps1 * xp.tan(case.eps_dir[2]), case=case, getnorm=[True, r])
+	for result in pool.imap(converge_dir_, iterable=xp.linspace(case.eps_dir[0], case.eps_dir[1], case.n_eps):
+		data.append(result)
+	save_data('qpFK_converge_dir', data, timestr, case)
 
 def converge_region(eps_region, case):
 	timestr = time.strftime("%Y%m%d_%H%M")
