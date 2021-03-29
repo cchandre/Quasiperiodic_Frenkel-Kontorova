@@ -92,10 +92,11 @@ class qpFK:
 			xp.sqrt(xp.abs(ifftn(self.alpha_perp_nu ** r * fftn(h)) ** 2).sum())]
 
 def save_data(name, data, timestr, case):
-	case.DictParams.update({'data': data})
+	mdic = case.DictParams.copy()
+	mdic.update({'data': data})
 	date_today = date.today().strftime(" %B %d, %Y\n")
-	case.DictParams.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
-	savemat(name + '_' + timestr + '.mat', case.DictParams)
+	mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
+	savemat(name + '_' + timestr + '.mat', mdic)
 
 def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 	h = case.initial_h([eps1, eps2])
