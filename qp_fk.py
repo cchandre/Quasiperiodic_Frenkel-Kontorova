@@ -11,16 +11,16 @@ warnings.filterwarnings("ignore")
 
 def main():
 	dict_params = {
-		'N': 2 ** 9,
+		'N': 2 ** 10,
 		'alpha': [1.246979603717467, 2.801937735804838],
 		'potential': 'pot1',
-		'n_eps': 256,
+		'n_eps': 30,
 		'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
 		'eps_point': [0.009, 0.0030],
-		'eps_dir': [0.0, 0.01, xp.pi/4],
-		'TolMax': 1e6,
-		'TolMin': 1e-6,
-		'threshold': 1e-8,
+		'eps_dir': [0.001, 0.01, xp.pi/5],
+		'TolMax': 1e2,
+		'TolMin': 1e-11,
+		'threshold': 1e-10,
 		'Precision': 64
 		}
 	alpha = dict_params['alpha']
@@ -32,7 +32,9 @@ def main():
 	case = qpFK(dv, dict_params)
 	#converge_region(xp.linspace(self.eps_region, case.n_eps), case)
 	#converge_point(case.eps_point[0], case.eps_point[1], case, gethull=True)
-	converge_dir(4, case, output='critical')
+	eps_c = converge_dir(case, output='critical')
+	case.eps_dir[1] = eps_c
+	converge_dir(case, r=5, output='all', scale='log')
 
 class qpFK:
 	def __init__(self, dv, dict_params):
@@ -91,9 +93,9 @@ class qpFK:
 		return [xp.sqrt(xp.abs(ifftn(self.alpha_nu ** r * fftn(h)) ** 2).sum()),\
 			xp.sqrt(xp.abs(ifftn(self.alpha_perp_nu ** r * fftn(h)) ** 2).sum())]
 
-def save_data(name, data, timestr, case):
+def save_data(name, data, timestr, case, info=[]):
 	mdic = case.DictParams.copy()
-	mdic.update({'data': data})
+	mdic.update({'data': data, 'info': info})
 	date_today = date.today().strftime(" %B %d, %Y\n")
 	mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
 	savemat(name + '_' + timestr + '.mat', mdic)
@@ -116,16 +118,20 @@ def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 		it_count = 0
 	return [int(err <= case.TolMin), it_count]
 
-def converge_dir(r, case, output='all'):
+def converge_dir(case, r=5, output='all', scale='lin'):
 	if output == 'all':
 		timestr = time.strftime("%Y%m%d_%H%M")
 		num_cores = multiprocess.cpu_count()
 		pool = multiprocess.Pool(num_cores)
 		data = []
 		converge_dir_ = lambda eps1: converge_point(eps1, eps1 * xp.tan(case.eps_dir[2]), case, getnorm=[True, r])
-		for result in tqdm(pool.imap(converge_dir_, iterable=xp.linspace(case.eps_dir[0], case.eps_dir[1], case.n_eps))):
+		if scale == 'log':
+			veceps = case.eps_dir[1] * (1.0 - xp.logspace(xp.log10((case.eps_dir[1] - case.eps_dir[0]) / case.eps_dir[1]), xp.log10(case.TolMin), case.n_eps))
+		elif scale == 'lin':
+			veceps = xp.linspace(case.eps_dir[0], case.eps_dir[1], case.n_eps)
+		for result in tqdm(pool.imap(converge_dir_, iterable=veceps)):
 			data.append(result)
-		save_data('qpFK_converge_dir', xp.array(data).reshape((case.n_eps, 3)), timestr, case)
+		save_data('qpFK_converge_dir', xp.array(data).reshape((case.n_eps, 3)), timestr, case, info=veceps)
 	elif output == 'critical':
 		epsmin = case.eps_dir[0]
 		epsmax = case.eps_dir[1]
@@ -135,7 +141,8 @@ def converge_dir(r, case, output='all'):
 				epsmin = epsmid
 			else:
 				epsmax = epsmid
-		print('Critical epsilon = {}'.format(epsmid))
+		print('Critical epsilon = {}'.format(epsmin))
+		return epsmin
 
 def converge_region(eps_region, case):
 	timestr = time.strftime("%Y%m%d_%H%M")
