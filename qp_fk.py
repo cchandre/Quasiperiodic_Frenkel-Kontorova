@@ -12,8 +12,8 @@ warnings.filterwarnings("ignore")
 def main():
 	dict_params = {
 		'n': 2 ** 10,
-		'alpha': [1.246979603717467, 2.801937735804838],
 		'omega': 1.0,
+		'alpha': [1.246979603717467, 2.801937735804838],
 		'alpha_perp': [2.801937735804838, -1.246979603717467],
 		'potential': 'pot1_2d',
 		'eps_n': 30,
@@ -25,7 +25,6 @@ def main():
 		'threshold': 1e-10,
 		'precision': 64
 		}
-	alpha = dict_params['alpha']
 	dv = {
 		'pot1_1d': lambda phi, eps: eps[0] * xp.sin(phi) + eps[1] * xp.sin(2.0 * phi),
 		'pot1_2d': lambda phi, eps: [eps[0] * xp.sin(phi[0]), eps[1] * xp.sin(phi[1])],
@@ -35,8 +34,7 @@ def main():
 	case = qpFK(dv, dict_params)
 	#converge_region(xp.linspace(self.eps_region, case.n_eps), case)
 	#converge_point(case.eps_point[0], case.eps_point[1], case, gethull=True)
-	eps_c = converge_dir(case, output='critical')
-	case.eps_dir[1] = eps_c
+	case.eps_dir[1] = converge_dir(case, output='critical')
 	converge_dir(case, r=5, output='all', scale='log')
 
 class qpFK:
