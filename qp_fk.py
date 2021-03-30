@@ -27,9 +27,10 @@ def main():
 		}
 	alpha = dict_params['alpha']
 	dv = {
-		'pot1_2d': lambda phi, eps: eps[0] * alpha[0] * xp.sin(phi[0]) + eps[1] * alpha[1] * xp.sin(phi[1]),
-		'pot2_2d': lambda phi, eps: eps[0] * (alpha[0] + alpha[1]) * xp.sin(2.0 * phi[0]+ 2.0 * phi[1])\
-		 + eps[1] * (alpha[0] * xp.sin(phi[0]) + alpha[1] * xp.sin(phi[1]))
+		'pot1_1d': lambda phi, eps: eps[0] * xp.sin(phi) + eps[1] * xp.sin(2.0 * phi),
+		'pot1_2d': lambda phi, eps: [eps[0] * xp.sin(phi[0]), eps[1] * xp.sin(phi[1])],
+		'pot2_2d': lambda phi, eps: [eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[0]),\
+		 	eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[1])]
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = qpFK(dv, dict_params)
 	#converge_region(xp.linspace(self.eps_region, case.n_eps), case)
@@ -62,7 +63,7 @@ class qpFK:
 		self.phi = xp.meshgrid(*ind_phi, indexing='ij')
 		self.threshold *= self.n**dim
 		ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu!=0)
-		self.initial_h = lambda eps: - ifftn(fftn(self.dv(self.phi, eps)) * ilk_alpha_nu)
+		self.initial_h = lambda eps: - ifftn(fftn(self.alpha * self.dv(self.phi, eps)) * ilk_alpha_nu)
 
 	def __repr__(self):
 		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
@@ -76,7 +77,7 @@ class qpFK:
 		h_thresh = ifftn(fft_h)
 		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
 		l = 1.0 + 2.0 * xp.pi * ifftn(1j * self.alpha_nu * fft_h)
-		epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
+		epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.alpha * self.dv(arg_v, eps)
 		fft_leps = fftn(l * epsilon)
 		fft_l = fftn(l)
 		delta = - fft_leps[self.zero_] / fft_l[self.zero_]
@@ -89,7 +90,7 @@ class qpFK:
 		h = xp.real(h_thresh + dell * l)
 		lam = xp.real(lam + delta)
 		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
-		err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.dv(arg_v, eps)).max()
+		err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.alpha * self.dv(arg_v, eps)).max()
 		return h, lam, err
 
 	def norms(self, h, r=0):
