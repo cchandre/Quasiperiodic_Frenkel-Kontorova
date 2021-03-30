@@ -13,7 +13,8 @@ def main():
 	dict_params = {
 		'N': 2 ** 10,
 		'alpha': [1.246979603717467, 2.801937735804838],
-		'potential': 'pot1',
+		'alpha_perp': [2.801937735804838, -1.246979603717467],
+		'potential': 'pot1_2d',
 		'n_eps': 30,
 		'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
 		'eps_point': [0.009, 0.0030],
@@ -25,10 +26,10 @@ def main():
 		}
 	alpha = dict_params['alpha']
 	dv = {
-		'pot1': lambda phi, eps: eps[0] * alpha[0] * xp.sin(phi[0]) + eps[1] * alpha[1] * xp.sin(phi[1]),
-		'pot2': lambda phi, eps: eps[0] * (alpha[0] + alpha[1]) * xp.sin(2.0 * phi[0]+ 2.0 * phi[1])\
+		'pot1_2d': lambda phi, eps: eps[0] * alpha[0] * xp.sin(phi[0]) + eps[1] * alpha[1] * xp.sin(phi[1]),
+		'pot2_2d': lambda phi, eps: eps[0] * (alpha[0] + alpha[1]) * xp.sin(2.0 * phi[0]+ 2.0 * phi[1])\
 		 + eps[1] * (alpha[0] * xp.sin(phi[0]) + alpha[1] * xp.sin(phi[1]))
-		}.get(dict_params['potential'], 'pot1')
+		}.get(dict_params['potential'], 'pot1_2d')
 	case = qpFK(dv, dict_params)
 	#converge_region(xp.linspace(self.eps_region, case.n_eps), case)
 	#converge_point(case.eps_point[0], case.eps_point[1], case, gethull=True)
@@ -44,13 +45,14 @@ class qpFK:
 		self.Precision = {32: xp.float32, 64: xp.float64, 128: xp.float128}.get(self.Precision, xp.float64)
 		self.dv = dv
 		dim = len(self.alpha)
-		self.alpha = xp.asarray(self.alpha, dtype=self.Precision)
-		alpha_perp = xp.asarray([self.alpha[1], -self.alpha[0]], dtype=self.Precision)
+		self.alpha = xp.array(self.alpha, self.Precision)
 		self.zero_ = dim * (0,)
 		ind_nu = dim * (fftfreq(self.N, d=1/self.N),)
 		nu = xp.meshgrid(*ind_nu, indexing='ij')
 		self.alpha_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha, nu)
-		self.alpha_perp_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', alpha_perp, nu)
+		if self.alpha_perp:
+			self.alpha_perp = xp.array(self.alpha_perp, self.Precision)
+			self.alpha_perp_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha_perp, nu)
 		self.exp_alpha_nu = xp.exp(1j * self.alpha_nu)
 		self.lk_alpha_nu = 2.0 * (xp.cos(self.alpha_nu) - 1.0)
 		self.sml_div = self.exp_alpha_nu - 1.0
@@ -71,7 +73,7 @@ class qpFK:
 		fft_h = fftn(h)
 		fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
 		h_thresh = ifftn(fft_h)
-		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(xp.asarray(self.alpha), h_thresh, axes=0)
+		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
 		l = 1.0 + ifftn(1j * self.alpha_nu * fft_h)
 		epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
 		fft_leps = fftn(l * epsilon)
@@ -85,13 +87,16 @@ class qpFK:
 		dell = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj())
 		h = xp.real(h_thresh + dell * l)
 		lam = xp.real(lam + delta)
-		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(xp.asarray(self.alpha), h, axes=0)
+		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
 		err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.dv(arg_v, eps)).max()
 		return h, lam, err
 
-	def norms(self, h, r):
-		return [xp.sqrt(xp.abs(ifftn(self.alpha_nu ** r * fftn(h)) ** 2).sum()),\
-			xp.sqrt(xp.abs(ifftn(self.alpha_perp_nu ** r * fftn(h)) ** 2).sum())]
+	def norms(self, h, r=0):
+		if self.alpha_perp:
+			return [xp.sqrt(xp.abs(ifftn(self.alpha_nu ** r * fftn(h)) ** 2).sum()),\
+				xp.sqrt(xp.abs(ifftn(self.alpha_perp_nu ** r * fftn(h)) ** 2).sum())]
+		else:
+			return xp.sqrt(xp.abs(ifftn(self.alpha_nu ** r * fftn(h)) ** 2).sum())
 
 def save_data(name, data, timestr, case, info=[]):
 	mdic = case.DictParams.copy()
@@ -131,10 +136,9 @@ def converge_dir(case, r=5, output='all', scale='lin'):
 			veceps = xp.linspace(case.eps_dir[0], case.eps_dir[1], case.n_eps)
 		for result in tqdm(pool.imap(converge_dir_, iterable=veceps)):
 			data.append(result)
-		save_data('qpFK_converge_dir', xp.array(data).reshape((case.n_eps, 3)), timestr, case, info=veceps)
+		save_data('qpFK_converge_dir', xp.array(data).reshape((case.n_eps, -1)), timestr, case, info=veceps)
 	elif output == 'critical':
-		epsmin = case.eps_dir[0]
-		epsmax = case.eps_dir[1]
+		epsmin, epsmax = case.eps_dir[0:2]
 		while xp.abs(epsmin - epsmax) >= case.TolMin:
 			epsmid = (epsmin + epsmax) / 2.0
 			if converge_point(epsmid, epsmid * case.eps_dir[2], case)[0]:
