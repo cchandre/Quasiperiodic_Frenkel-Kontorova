@@ -13,6 +13,7 @@ def main():
 	dict_params = {
 		'n': 2 ** 10,
 		'alpha': [1.246979603717467, 2.801937735804838],
+		'omega': 1.0,
 		'alpha_perp': [2.801937735804838, -1.246979603717467],
 		'potential': 'pot1_2d',
 		'eps_n': 30,
@@ -49,15 +50,15 @@ class qpFK:
 		self.zero_ = dim * (0,)
 		ind_nu = dim * (fftfreq(self.n, d=1/self.n),)
 		nu = xp.meshgrid(*ind_nu, indexing='ij')
-		self.alpha_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha, nu)
+		self.alpha_nu = xp.einsum('i,i...->...', self.alpha, nu)
 		if self.alpha_perp:
 			self.alpha_perp = xp.array(self.alpha_perp, self.precision)
-			self.alpha_perp_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha_perp, nu)
-		self.exp_alpha_nu = xp.exp(1j * self.alpha_nu)
-		self.lk_alpha_nu = 2.0 * (xp.cos(self.alpha_nu) - 1.0)
+			self.alpha_perp_nu = xp.einsum('i,i...->...', self.alpha_perp, nu)
+		self.exp_alpha_nu = xp.exp(1j * 2.0 * xp.pi * self.omega * self.alpha_nu)
+		self.lk_alpha_nu = 2.0 * (xp.cos(2.0 * xp.pi * self.omega * self.alpha_nu) - 1.0)
 		self.sml_div = self.exp_alpha_nu - 1.0
 		self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
-		ind_phi = dim * (2.0 * xp.pi * xp.linspace(0.0, 1.0, self.n, endpoint=False),)
+		ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
 		self.phi = xp.meshgrid(*ind_phi, indexing='ij')
 		self.threshold *= self.n**dim
 		ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu!=0)
@@ -67,14 +68,14 @@ class qpFK:
 		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
 
 	def __str__(self):
-		return 'Quasiperiodic Frenkel-Kontorova ({self.__class__.name__}) model with alpha = {self.alpha}'.format(self=self)
+		return 'Quasiperiodic Frenkel-Kontorova ({self.__class__.name__}) model with alpha = {self.alpha} and omega = {self.omega}'.format(self=self)
 
 	def refine_h(self, h, lam, eps):
 		fft_h = fftn(h)
 		fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
 		h_thresh = ifftn(fft_h)
 		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
-		l = 1.0 + ifftn(1j * self.alpha_nu * fft_h)
+		l = 1.0 + 2.0 * xp.pi * ifftn(1j * self.alpha_nu * fft_h)
 		epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
 		fft_leps = fftn(l * epsilon)
 		fft_l = fftn(l)
