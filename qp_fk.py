@@ -10,33 +10,34 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def main():
-	dict_params = {
-		'n': 2 ** 9,
-		'omega': 1.0,
-		'alpha': [1.246979603717467, 2.801937735804838],
-		'alpha_perp': [2.801937735804838, -1.246979603717467],
-		'potential': 'pot1_2d'}
-	dict_params.update({
-		'eps_n': 256,
-		'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
-		'eps_point': [0.009, 0.0030],
-		'eps_dir': [0.001, 0.01, xp.pi/5]})
 	# dict_params = {
 	# 	'n': 2 ** 9,
-	# 	'omega': 0.618033988749895,
-	# 	'alpha': [1.0],
-	# 	'potential': 'pot1_1d'}
+	# 	'omega': 1.0,
+	# 	'alpha': [1.246979603717467, 2.801937735804838],
+	# 	'alpha_perp': [2.801937735804838, -1.246979603717467],
+	# 	'potential': 'pot1_2d'}
 	# dict_params.update({
-	# 	'eps_n': 30,
-	# 	'eps_region': [[0.0, -0.8], [2.0,  0.8]]})
+	# 	'eps_n': 256,
+	# 	'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
+	# 	'eps_point': [0.009, 0.0030],
+	# 	'eps_dir': [0.001, 0.01, xp.pi/5]})
+	dict_params = {
+		'n': 2 ** 11,
+		'omega': 0.618033988749895,
+		'alpha': [1.0],
+		'potential': 'pot1_1d'}
+	dict_params.update({
+		'eps_n': 256,
+		'eps_region': [[0.0, -0.8], [2.0,  0.8]]})
 	dict_params.update({
 		'tolmax': 1e2,
-		'tolmin': 1e-8,
-		'threshold': 1e-8,
-		'precision': 64})
+		'tolmin': 1e-10,
+		'threshold': 1e-12,
+		'precision': 64,
+		'save_results': False})
 	alpha = dict_params['alpha']
 	dv = {
-		'pot1_1d': lambda phi, eps: alpha * (eps[0] * xp.sin(phi) + eps[1] * xp.sin(2.0 * phi)),
+		'pot1_1d': lambda phi, eps: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
 		'pot1_2d': lambda phi, eps: alpha[0] * eps[0] * xp.sin(phi[0]) + alpha[1] * eps[1] * xp.sin(phi[1]),
 		'pot2_2d': lambda phi, eps: alpha[0] * (eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[0]))\
 		 	+ alpha[1] * (eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
@@ -57,8 +58,8 @@ class qpFK:
 		dim = len(self.alpha)
 		self.alpha = xp.array(self.alpha, self.precision)
 		self.zero_ = dim * (0,)
-		ind_nu = dim * (fftfreq(self.n, d=1/self.n),)
-		nu = xp.meshgrid(*ind_nu, indexing='ij')
+		ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
+		nu = xp.asarray(xp.meshgrid(*ind_nu, indexing='ij'), dtype=self.precision)
 		self.alpha_nu = xp.einsum('i,i...->...', self.alpha, nu)
 		if hasattr(self, 'alpha_perp'):
 			self.alpha_perp = xp.array(self.alpha_perp, self.precision)
@@ -109,11 +110,12 @@ class qpFK:
 			return xp.sqrt(xp.abs(ifftn(self.alpha_nu ** r * fftn(h)) ** 2).sum())
 
 def save_data(name, data, timestr, case, info=[]):
-	mdic = case.DictParams.copy()
-	mdic.update({'data': data, 'info': info})
-	date_today = date.today().strftime(" %B %d, %Y\n")
-	mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
-	savemat(name + '_' + timestr + '.mat', mdic)
+	if case.save_results:
+		mdic = case.DictParams.copy()
+		mdic.update({'data': data, 'info': info})
+		date_today = date.today().strftime(" %B %d, %Y\n")
+		mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
+		savemat(name + '_' + timestr + '.mat', mdic)
 
 def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 	h = case.initial_h([eps1, eps2])
