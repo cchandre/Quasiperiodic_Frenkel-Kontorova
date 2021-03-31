@@ -27,14 +27,15 @@ def main():
 		'alpha': [1.0],
 		'potential': 'pot1_1d'}
 	dict_params.update({
-		'eps_n': 256,
+		'eps_n': 512,
 		'eps_region': [[0.0, -0.8], [2.0,  0.8]]})
 	dict_params.update({
 		'tolmax': 1e2,
 		'tolmin': 1e-10,
 		'threshold': 1e-12,
 		'precision': 64,
-		'save_results': False})
+		'save_results': False,
+		'n_step': 4})
 	alpha = dict_params['alpha']
 	dv = {
 		'pot1_1d': lambda phi, eps: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
@@ -55,10 +56,10 @@ class qpFK:
 		self.DictParams = dict_params
 		self.precision = {32: xp.float32, 64: xp.float64, 128: xp.float128}.get(self.precision, xp.float64)
 		self.dv = dv
-		dim = len(self.alpha)
+		self.dim = len(self.alpha)
 		self.alpha = xp.array(self.alpha, self.precision)
-		self.zero_ = dim * (0,)
-		ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
+		self.zero_ = self.dim * (0,)
+		ind_nu = self.dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
 		nu = xp.asarray(xp.meshgrid(*ind_nu, indexing='ij'), dtype=self.precision)
 		self.alpha_nu = xp.einsum('i,i...->...', self.alpha, nu)
 		if hasattr(self, 'alpha_perp'):
@@ -68,11 +69,23 @@ class qpFK:
 		self.lk_alpha_nu = 2.0 * (xp.cos(2.0 * xp.pi * self.omega * self.alpha_nu) - 1.0)
 		self.sml_div = self.exp_alpha_nu - 1.0
 		self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
-		ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
+		ind_phi = self.dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
 		self.phi = xp.asarray(xp.meshgrid(*ind_phi, indexing='ij'), dtype=self.precision)
-		self.threshold *= self.n**dim
-		ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu!=0)
-		self.initial_h = lambda eps: - ifftn(fftn(self.dv(self.phi, eps)) * ilk_alpha_nu)
+		self.threshold *= self.n**self.dim
+		self.ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu!=0)
+		self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * self.ilk_alpha_nu), 0.0]
+
+	def refined_initial_h(self, eps, n_step):
+		h, lam = self.initial_h(eps)
+		for _ in range(n_step):
+			fft_h = fftn(h)
+			fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
+			h = ifftn(fft_h)
+			arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
+			dvh = fftn(self.dv(arg_v, eps))
+			lam = - dvh[self.zero_] / self.n ** self.dim
+			h = - ifftn(dvh * self.ilk_alpha_nu)
+		return h, lam
 
 	def __repr__(self):
 		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
@@ -118,8 +131,7 @@ def save_data(name, data, timestr, case, info=[]):
 		savemat(name + '_' + timestr + '.mat', mdic)
 
 def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
-	h = case.initial_h([eps1, eps2])
-	lam = 0.0
+	h, lam = case.refined_initial_h([eps1, eps2], case.n_step)
 	err = 1.0
 	it_count = 0
 	while case.tolmax >= err >= case.tolmin:
