@@ -22,20 +22,20 @@ def main():
 	# 	'eps_point': [0.009, 0.0030],
 	# 	'eps_dir': [0.001, 0.01, xp.pi/5]})
 	dict_params = {
-		'n': 2 ** 11,
+		'n': 2 ** 10,
 		'omega': 0.618033988749895,
 		'alpha': [1.0],
 		'potential': 'pot1_1d'}
 	dict_params.update({
-		'eps_n': 512,
+		'eps_n': 128,
 		'eps_region': [[0.0, -0.8], [2.0,  0.8]]})
 	dict_params.update({
 		'tolmax': 1e2,
 		'tolmin': 1e-10,
+		'tolinit': 1e-1,
 		'threshold': 1e-12,
 		'precision': 64,
-		'save_results': False,
-		'n_step': 4})
+		'save_results': True})
 	alpha = dict_params['alpha']
 	dv = {
 		'pot1_1d': lambda phi, eps: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
@@ -50,6 +50,12 @@ def main():
 	#converge_dir(case, r=5, output='all', scale='log')
 
 class qpFK:
+	def __repr__(self):
+		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
+
+	def __str__(self):
+		return 'Quasiperiodic Frenkel-Kontorova ({self.__class__.name__}) model with alpha = {self.alpha} and omega = {self.omega}'.format(self=self)
+
 	def __init__(self, dv, dict_params):
 		for key in dict_params:
 			setattr(self, key, dict_params[key])
@@ -75,9 +81,11 @@ class qpFK:
 		self.ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu!=0)
 		self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * self.ilk_alpha_nu), 0.0]
 
-	def refined_initial_h(self, eps, n_step):
+	def refined_initial_h(self, eps):
 		h, lam = self.initial_h(eps)
-		for _ in range(n_step):
+		arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
+		err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.dv(arg_v, eps)).max()
+		while err >= self.tolinit:
 			fft_h = fftn(h)
 			fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
 			h = ifftn(fft_h)
@@ -85,13 +93,9 @@ class qpFK:
 			dvh = fftn(self.dv(arg_v, eps))
 			lam = - dvh[self.zero_] / self.n ** self.dim
 			h = - ifftn(dvh * self.ilk_alpha_nu)
+			arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
+			err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.dv(arg_v, eps)).max()
 		return h, lam
-
-	def __repr__(self):
-		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
-
-	def __str__(self):
-		return 'Quasiperiodic Frenkel-Kontorova ({self.__class__.name__}) model with alpha = {self.alpha} and omega = {self.omega}'.format(self=self)
 
 	def refine_h(self, h, lam, eps):
 		fft_h = fftn(h)
@@ -131,7 +135,7 @@ def save_data(name, data, timestr, case, info=[]):
 		savemat(name + '_' + timestr + '.mat', mdic)
 
 def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
-	h, lam = case.refined_initial_h([eps1, eps2], case.n_step)
+	h, lam = case.refined_initial_h([eps1, eps2])
 	err = 1.0
 	it_count = 0
 	while case.tolmax >= err >= case.tolmin:
