@@ -132,7 +132,7 @@ def save_data(name, data, timestr, case, info=[]):
 		mdic.update({'data': data, 'info': info})
 		date_today = date.today().strftime(" %B %d, %Y\n")
 		mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
-		savemat(name + '_' + timestr + '.mat', mdic)
+		savemat(type(case).__name__ + '_' + name + '_' + timestr + '.mat', mdic)
 
 def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 	h, lam = case.refined_initial_h([eps1, eps2])
@@ -143,7 +143,7 @@ def converge_point(eps1, eps2, case, gethull=False, getnorm=[False, 0]):
 		it_count += 1
 	if gethull:
 		timestr = time.strftime("%Y%m%d_%H%M")
-		save_data('qpFK_hull', h, timestr, case)
+		save_data('hull', h, timestr, case)
 		return int(err <= case.tolmin)
 	if getnorm[0]:
 		return xp.append(int(err <= case.tolmin), case.norms(h, getnorm[1]))
@@ -164,7 +164,7 @@ def converge_dir(case, r=5, output='all', scale='lin'):
 			eps_vec = xp.linspace(case.eps_dir[0], case.eps_dir[1], case.eps_n)
 		for result in tqdm(pool.imap(converge_dir_, iterable=eps_vec)):
 			data.append(result)
-		save_data('qpFK_converge_dir', xp.array(data).reshape((case.eps_n, -1)), timestr, case, info=eps_vec)
+		save_data('converge_dir', xp.array(data).reshape((case.eps_n, -1)), timestr, case, info=eps_vec)
 	elif output == 'critical':
 		eps_min, eps_max = case.eps_dir[0:2]
 		while xp.abs(eps_min - eps_max) >= case.tolmin:
@@ -184,9 +184,9 @@ def converge_region(eps_region, case):
 		converge_point_ = lambda eps1: converge_point(eps1, eps2, case)
 		for result in pool.imap(converge_point_, iterable=eps_region[0]):
 			data.append(result)
-		save_data('qpFK_converge_region', data, timestr, case)
+		save_data('converge_region', data, timestr, case)
 	data = xp.array(data).reshape((case.eps_n, case.eps_n, -1))
-	save_data('qpFK_converge_region', data, timestr, case)
+	save_data('converge_region', data, timestr, case)
 	plt.pcolor(data[:, :, 0])
 	plt.show()
 
