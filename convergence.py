@@ -21,24 +21,24 @@ def point(eps1, eps2, case, h = [], gethull=False, getnorm=[False, 0]):
 	while case.tolmax >= err >= case.tolmin:
 		h, lam, err = case.refine_h(h, lam, [eps1, eps2])
 		it_count += 1
+	if err <= case.tolmin:
+		it_count = 0
 	if gethull:
 		timestr = time.strftime("%Y%m%d_%H%M")
 		save_data('hull', h, timestr, case)
-		return int(err <= case.tolmin), h
+		return [int(err <= case.tolmin), it_count], h
 	if getnorm[0]:
-		return xp.append(int(err <= case.tolmin), case.norms(h, getnorm[1]))
-	if err <= case.tolmin:
-		it_count = 0
+		return [int(err <= case.tolmin), it_count], h, case.norms(h, getnorm[1])
 	return [int(err <= case.tolmin), it_count], h
 
-def region(case, method='cartesian', scale='lin', output= 'all', parallel=False):
+def region(case, scale='lin', output= 'all', parallel=False):
 	timestr = time.strftime("%Y%m%d_%H%M")
 	if parallel:
 		num_cores = multiprocess.cpu_count()
 		pool = multiprocess.Pool(num_cores)
 	eps_region = xp.array(case.eps_region)
 	data = []
-    if method == 'cartesian':
+    if case.eps_type == 'cartesian':
 		eps_grid = [xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n), xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)]
     	for eps2 in tqdm(eps_grid[1]):
 			if parallel:
@@ -49,7 +49,7 @@ def region(case, method='cartesian', scale='lin', output= 'all', parallel=False)
 					result, h = point(eps1, eps2, case)
 					data.append(result)
 			save_data('region', data, timestr, case)
-	elif method == 'polar':
+	elif case.eps_type == 'polar':
 		thetas = xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)
 		if output == 'all':
 			if scale == 'lin':

@@ -24,7 +24,8 @@ def main():
 		'potential': 'pot1_1d'}
 	dict_params.update({
 		'eps_n': 128,
-		'eps_region': [[0.0, 2.0], [-0.8,  0.8]]})
+		'eps_region': [[0.0, 2.0], [-0.8,  0.8]],
+		'eps_type': 'cartesian'})
 	dict_params.update({
 		'tolmax': 1e2,
 		'tolmin': 1e-10,
