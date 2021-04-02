@@ -13,8 +13,8 @@ def save_data(name, data, timestr, case, info=[]):
 		mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
 		savemat(type(case).__name__ + '_' + name + '_' + timestr + '.mat', mdic)
 
-def point(eps1, eps2, case, h = [], gethull=False, getnorm=[False, 0]):
-	if not h:
+def point(eps1, eps2, case, h = [], lam=[], gethull=False, getnorm=[False, 0]):
+	if len(h) == 0:
 		h, lam = case.initial_h([eps1, eps2])
 	err = 1.0
 	it_count = 0
@@ -29,7 +29,7 @@ def point(eps1, eps2, case, h = [], gethull=False, getnorm=[False, 0]):
 		return [int(err <= case.tolmin), it_count], h
 	if getnorm[0]:
 		return [int(err <= case.tolmin), it_count], h, case.norms(h, getnorm[1])
-	return [int(err <= case.tolmin), it_count], h
+	return [int(err <= case.tolmin), it_count], h, lam
 
 def region(case, scale='lin', output= 'all', parallel=False):
 	timestr = time.strftime("%Y%m%d_%H%M")
@@ -38,15 +38,15 @@ def region(case, scale='lin', output= 'all', parallel=False):
 		pool = multiprocess.Pool(num_cores)
 	eps_region = xp.array(case.eps_region)
 	data = []
-    if case.eps_type == 'cartesian':
+	if case.eps_type == 'cartesian':
 		eps_grid = [xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n), xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)]
-    	for eps2 in tqdm(eps_grid[1]):
+		for eps2 in tqdm(eps_grid[1]):
 			if parallel:
-	    		for result, h in pool.imap(lambda eps1: point(eps1, eps2, case), iterable=eps_grid[0]):
-	    			data.append(result)
+				for result, h in pool.imap(lambda eps1: point(eps1, eps2, case), iterable=eps_grid[0]):
+					data.append(result)
 			else:
-				for eps1 in tdqm(eps_grid[0]):
-					result, h = point(eps1, eps2, case)
+				for eps1 in tqdm(eps_grid[0], leave=False):
+					result, h, lam = point(eps1, eps2, case)
 					data.append(result)
 			save_data('region', data, timestr, case)
 	elif case.eps_type == 'polar':
@@ -56,16 +56,16 @@ def region(case, scale='lin', output= 'all', parallel=False):
 				radii = xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n)
 			elif scale == 'log':
 				radii = eps_region[0, 1] * (1.0 - xp.logspace(xp.log10((eps_region[0, 1] - eps_region[0, 0]) / eps_region[0, 1]), xp.log10(case.tolmin), case.eps_n))
-			for theta in thetas:
+			for theta in tqdm(thetas):
 				h = []
-				for radius in radii:
-					result, h = point(radius * xp.cos(theta), radius * xp.sin(theta), case, h)
+				lam = []
+				for radius in tqdm(radii, leave=False):
+					result, h, lam = point(radius * xp.cos(theta), radius * xp.sin(theta), case, h, lam)
 					data.append(result)
 				save_data('region', data, timestr, case)
-			data = xp.array(data).reshape((case.eps_n, case.eps_n, -1))
 		elif output == 'critical':
 			for theta in thetas:
-				eps_min, eps_max = eps_region[0, 0:2]
+				eps_min, eps_max = eps_region[0]
 				while xp.abs(eps_min - eps_max) >= case.tolmin:
 					eps_mid = (eps_min + eps_max) / 2.0
 					if point(eps_mid * xp.cos(theta), eps_mid * xp.sin(theta), case)[0]:
@@ -74,4 +74,4 @@ def region(case, scale='lin', output= 'all', parallel=False):
 						eps_max = eps_mid
 				data.append(eps_min)
 	save_data('region', data, timestr, case)
-    return data
+	return xp.array(data).reshape((case.eps_n, case.eps_n, -1))

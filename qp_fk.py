@@ -6,33 +6,32 @@ import convergence as cv
 warnings.filterwarnings("ignore")
 
 def main():
+	dict_params = {
+		'n': 2 ** 9,
+		'omega': 1.0,
+		'alpha': [1.246979603717467, 2.801937735804838],
+		'alpha_perp': [2.801937735804838, -1.246979603717467],
+		'potential': 'pot1_2d'}
+	dict_params.update({
+		'eps_n': 256,
+		'eps_region': [[0.0, 0.05], [0.0,  0.001]],
+		'eps_point': [0.009, 0.0030],
+		'eps_type': 'cartesian'})
 	# dict_params = {
-	# 	'n': 2 ** 9,
-	# 	'omega': 1.0,
-	# 	'alpha': [1.246979603717467, 2.801937735804838],
-	# 	'alpha_perp': [2.801937735804838, -1.246979603717467],
-	# 	'potential': 'pot1_2d'}
+	# 	'n': 2 ** 11,
+	# 	'omega': 0.618033988749895,
+	# 	'alpha': [1.0],
+	# 	'potential': 'pot1_1d'}
 	# dict_params.update({
 	# 	'eps_n': 256,
-	# 	'eps_region': [[0.007, 0.0025], [0.014,  0.0038]],
-	# 	'eps_point': [0.009, 0.0030],
-	# 	'eps_dir': [0.001, 0.01, xp.pi/5]})
-	dict_params = {
-		'n': 2 ** 10,
-		'omega': 0.618033988749895,
-		'alpha': [1.0],
-		'potential': 'pot1_1d'}
-	dict_params.update({
-		'eps_n': 128,
-		'eps_region': [[0.0, 2.0], [-0.8,  0.8]],
-		'eps_type': 'cartesian'})
+	# 	'eps_region': [[0.0, 2.0], [0.0,  xp.pi/2]],
+	# 	'eps_type': 'polar'})
 	dict_params.update({
 		'tolmax': 1e2,
 		'tolmin': 1e-10,
-		'tolinit': 1e-1,
 		'threshold': 1e-12,
 		'precision': 64,
-		'save_results': True})
+		'save_results': False})
 	alpha = dict_params['alpha']
 	dv = {
 		'pot1_1d': lambda phi, eps: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
@@ -41,7 +40,7 @@ def main():
 		 	+ alpha[1] * (eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = qpFK(dv, dict_params)
-	data = cv.region(xp.linspace(case.eps_region[0], case.eps_region[1], case.eps_n).transpose(), case)
+	data = cv.region(case)
 	plt.pcolor(data[:, :, 0])
 	plt.show()
 	#cv.point(case.eps_point[0], case.eps_point[1], case, gethull=True)
