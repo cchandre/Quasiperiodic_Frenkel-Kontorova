@@ -3,3 +3,4 @@
 .DS_Store
 __pycache__/convergence.cpython-38.pyc
 __pycache__/convergence.cpython-38.pyc
+*.pyc

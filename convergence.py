@@ -53,8 +53,8 @@ def region(case, scale='lin', output= 'all', parallel=False):
 				for eps1 in tqdm(eps_grid[0], leave=False):
 					result, h_, lam_ = point(eps1, eps2, case, h=h, lam=lam)
 					if result[0] == 1:
-						h = h_
-						lam = lam_
+						h = h_.copy()
+						lam = lam_.copy()
 					data.append(result)
 			save_data('region', data, timestr, case)
 	elif case.eps_type == 'polar':
