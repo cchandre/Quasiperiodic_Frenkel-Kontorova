@@ -42,11 +42,17 @@ def region(case, scale='lin', output= 'all', parallel=False):
 		eps_grid = [xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n), xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)]
 		for eps2 in tqdm(eps_grid[1]):
 			if parallel:
-				for result, h in pool.imap(lambda eps1: point(eps1, eps2, case), iterable=eps_grid[0]):
+				point_ = lambda eps1: point(eps1, eps2, case)
+				for result, h, lam in pool.imap(point_, iterable=eps_grid[0]):
 					data.append(result)
 			else:
+				h = []
+				lam = []
 				for eps1 in tqdm(eps_grid[0], leave=False):
-					result, h, lam = point(eps1, eps2, case)
+					result, h0, lam0 = point(eps1, eps2, case, h, lam)
+					if result[0] == 1:
+						h = h0
+						lam = lam0
 					data.append(result)
 			save_data('region', data, timestr, case)
 	elif case.eps_type == 'polar':
@@ -60,7 +66,10 @@ def region(case, scale='lin', output= 'all', parallel=False):
 				h = []
 				lam = []
 				for radius in tqdm(radii, leave=False):
-					result, h, lam = point(radius * xp.cos(theta), radius * xp.sin(theta), case, h, lam)
+					result, h0, lam0 = point(radius * xp.cos(theta), radius * xp.sin(theta), case, h, lam)
+					if result[0] == 1:
+						h = h0
+						lam = lam0
 					data.append(result)
 				save_data('region', data, timestr, case)
 		elif output == 'critical':

@@ -13,7 +13,7 @@ def main():
 		'alpha_perp': [2.801937735804838, -1.246979603717467],
 		'potential': 'pot1_2d'}
 	dict_params.update({
-		'eps_n': 256,
+		'eps_n': 32,
 		'eps_region': [[0.0, 0.05], [0.0,  0.001]],
 		'eps_point': [0.009, 0.0030],
 		'eps_type': 'cartesian'})
@@ -27,7 +27,7 @@ def main():
 	# 	'eps_region': [[0.0, 2.0], [0.0,  xp.pi/2]],
 	# 	'eps_type': 'polar'})
 	dict_params.update({
-		'tolmax': 1e2,
+		'tolmax': 1e5,
 		'tolmin': 1e-10,
 		'threshold': 1e-12,
 		'precision': 64,
@@ -40,7 +40,7 @@ def main():
 		 	+ alpha[1] * (eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = qpFK(dv, dict_params)
-	data = cv.region(case)
+	data = cv.region(case, parallel=True)
 	plt.pcolor(data[:, :, 0])
 	plt.show()
 	#cv.point(case.eps_point[0], case.eps_point[1], case, gethull=True)
