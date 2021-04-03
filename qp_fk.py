@@ -40,7 +40,7 @@ def main():
 		 	+ alpha[1] * (eps[0] * xp.sin(2.0 * phi[0]+ 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = qpFK(dv, dict_params)
-	data = cv.region(case, parallel=True)
+	data = cv.region(case, parallel=False)
 	plt.pcolor(data[:, :, 0])
 	plt.show()
 	#cv.point(case.eps_point[0], case.eps_point[1], case, gethull=True)

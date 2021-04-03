@@ -14,22 +14,24 @@ def save_data(name, data, timestr, case, info=[]):
 		savemat(type(case).__name__ + '_' + name + '_' + timestr + '.mat', mdic)
 
 def point(eps1, eps2, case, h = [], lam=[], gethull=False, getnorm=[False, 0]):
-	if len(h) == 0:
-		h, lam = case.initial_h([eps1, eps2])
+	h_ = h.copy()
+	lam_ = lam.copy()
+	if len(h_) == 0:
+		h_, lam_ = case.initial_h([eps1, eps2])
 	err = 1.0
 	it_count = 0
 	while case.tolmax >= err >= case.tolmin:
-		h, lam, err = case.refine_h(h, lam, [eps1, eps2])
+		h_, lam_, err = case.refine_h(h_, lam_, [eps1, eps2])
 		it_count += 1
 	if err <= case.tolmin:
 		it_count = 0
 	if gethull:
 		timestr = time.strftime("%Y%m%d_%H%M")
-		save_data('hull', h, timestr, case)
-		return [int(err <= case.tolmin), it_count], h
+		save_data('hull', h_, timestr, case)
+		return [int(err <= case.tolmin), it_count], h_, lam_
 	if getnorm[0]:
-		return [int(err <= case.tolmin), it_count], h, case.norms(h, getnorm[1])
-	return [int(err <= case.tolmin), it_count], h, lam
+		return [int(err <= case.tolmin), it_count], h_, lam_, case.norms(h_, getnorm[1])
+	return [int(err <= case.tolmin), it_count], h_, lam_
 
 def region(case, scale='lin', output= 'all', parallel=False):
 	timestr = time.strftime("%Y%m%d_%H%M")
@@ -49,10 +51,10 @@ def region(case, scale='lin', output= 'all', parallel=False):
 				h = []
 				lam = []
 				for eps1 in tqdm(eps_grid[0], leave=False):
-					result, h0, lam0 = point(eps1, eps2, case, h, lam)
+					result, h_, lam_ = point(eps1, eps2, case, h=h, lam=lam)
 					if result[0] == 1:
-						h = h0
-						lam = lam0
+						h = h_
+						lam = lam_
 					data.append(result)
 			save_data('region', data, timestr, case)
 	elif case.eps_type == 'polar':
@@ -66,10 +68,10 @@ def region(case, scale='lin', output= 'all', parallel=False):
 				h = []
 				lam = []
 				for radius in tqdm(radii, leave=False):
-					result, h0, lam0 = point(radius * xp.cos(theta), radius * xp.sin(theta), case, h, lam)
+					result, h_, lam_ = point(radius * xp.cos(theta), radius * xp.sin(theta), case, h=h, lam=lam)
 					if result[0] == 1:
-						h = h0
-						lam = lam0
+						h = h_
+						lam = lam_
 					data.append(result)
 				save_data('region', data, timestr, case)
 		elif output == 'critical':
