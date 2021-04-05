@@ -59,10 +59,10 @@ class qpFK:
         self.DictParams = dict_params
         self.precision = {32: xp.float32, 64: xp.float64, 128: xp.float128}.get(self.precision, xp.float64)
         self.dv = dv
-        self.dim = len(self.alpha)
+        dim = len(self.alpha)
         self.alpha = xp.array(self.alpha, self.precision)
-        self.zero_ = self.dim * (0,)
-        ind_nu = self.dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
+        self.zero_ = dim * (0,)
+        ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
         nu = xp.asarray(xp.meshgrid(*ind_nu, indexing='ij'), dtype=self.precision)
         self.alpha_nu = xp.einsum('i,i...->...', self.alpha, nu)
         if hasattr(self, 'alpha_perp'):
@@ -72,9 +72,9 @@ class qpFK:
         self.lk_alpha_nu = 2.0 * (xp.cos(2.0 * xp.pi * self.omega * self.alpha_nu) - 1.0)
         self.sml_div = self.exp_alpha_nu - 1.0
         self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div != 0)
-        ind_phi = self.dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
+        ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
         self.phi = xp.asarray(xp.meshgrid(*ind_phi, indexing='ij'), dtype=self.precision)
-        self.threshold *= self.n ** self.dim
+        self.threshold *= self.n ** dim
         self.ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu != 0)
         self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * self.ilk_alpha_nu), 0.0]
 
