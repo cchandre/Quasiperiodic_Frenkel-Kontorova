@@ -43,7 +43,6 @@ def main():
     data = cv.region(case, parallel=True)
     plt.pcolor(data[:, :, 0])
     plt.show()
-    # cv.point(case.eps_point[0], case.eps_point[1], case, gethull=True)
 
 
 class qpFK:
