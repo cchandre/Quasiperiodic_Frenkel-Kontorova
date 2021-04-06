@@ -68,13 +68,14 @@ class qpFK:
         if hasattr(self, 'alpha_perp'):
             self.alpha_perp = xp.array(self.alpha_perp, self.precision)
             self.alpha_perp_nu = xp.einsum('i,i...->...', self.alpha_perp, nu)
-        self.exp_alpha_nu = xp.exp(1j * 2.0 * xp.pi * self.omega * self.alpha_nu)
+        self.exp_alpha_nu = xp.exp(2j * xp.pi * self.omega * self.alpha_nu)
         self.lk_alpha_nu = 2.0 * (xp.cos(2.0 * xp.pi * self.omega * self.alpha_nu) - 1.0)
         self.sml_div = self.exp_alpha_nu - 1.0
         self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div != 0)
         ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
         self.phi = xp.asarray(xp.meshgrid(*ind_phi, indexing='ij'), dtype=self.precision)
-        self.threshold *= self.n ** dim
+        self.rescale_fft = self.n ** dim
+        self.threshold *= self.rescale_fft
         self.ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu != 0)
         self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * self.ilk_alpha_nu), 0.0]
 
@@ -83,18 +84,19 @@ class qpFK:
         fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
         h_thresh = ifftn(fft_h)
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
-        lfunc = 1.0 + 2.0 * xp.pi * ifftn(1j * self.alpha_nu * fft_h)
+        lfunc = 1.0 + 2j * xp.pi * ifftn(self.alpha_nu * fft_h)
         epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
         fft_leps = fftn(lfunc * epsilon)
-        fft_l = fftn(lfunc)
+        fft_l = 2j * xp.pi * self.alpha_nu * fft_h / self.rescale_fft
+        fft_l[self_zero_] = 1.0 / self.rescale_fft
         delta = - fft_leps[self.zero_] / fft_l[self.zero_]
         w = ifftn((delta * fft_l + fft_leps) * self.sml_div)
         ll = lfunc * ifftn(fft_l * self.exp_alpha_nu.conj())
         fft_wll = fftn(w / ll)
         fft_ill = fftn(1.0 / ll)
         w0 = - fft_wll[self.zero_] / fft_ill[self.zero_]
-        dell = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj())
-        h = xp.real(h_thresh + dell * lfunc)
+        delol = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj())
+        h = xp.real(h_thresh + delol * lfunc)
         lam = xp.real(lam + delta)
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
         err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.dv(arg_v, eps)).max()
