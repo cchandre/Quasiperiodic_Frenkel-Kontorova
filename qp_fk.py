@@ -27,9 +27,9 @@ def main():
         'eps_region': [[0.0, 2.0], [0.0, 0.8]],
         'eps_type': 'cartesian'})
     dict_params.update({
-        'tolmax': 1e2,
-        'tolmin': 1e-10,
-        'threshold': 1e-12,
+        'tolmax': 1e3,
+        'tolmin': 1e-8,
+        'threshold': 1e-10,
         'precision': 64,
         'save_results': False})
     alpha = dict_params['alpha']
@@ -41,7 +41,7 @@ def main():
     case = qpFK(dv, dict_params)
     data = cv.region(case, scale='lin', output='all')
     if case.eps_type == 'cartesian':
-        plt.pcolor(data[:, :, 0])
+        plt.pcolor(data[:, :, 0].transpose())
     elif case.eps_type == 'polar':
         eps_region = xp.array(case.eps_region)
         radii = xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n)
