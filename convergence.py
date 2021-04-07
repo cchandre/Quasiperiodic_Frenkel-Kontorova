@@ -44,6 +44,8 @@ def line(epsilon, case, getnorm=[False, 0]):
         if result[0] == 1:
             h = h_.copy()
             lam = lam_
+        else:
+            h, lam = case.initial_h(eps)
         results.append(result)
     return results
 
