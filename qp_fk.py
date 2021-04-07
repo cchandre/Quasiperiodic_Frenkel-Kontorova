@@ -7,29 +7,29 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    dict_params = {
-    	'n': 2 ** 9,
-    	'omega': 1.0,
-    	'alpha': [1.246979603717467, 2.801937735804838],
-    	'alpha_perp': [2.801937735804838, -1.246979603717467],
-    	'potential': 'pot1_2d'}
-    dict_params.update({
-    	'eps_n': 30,
-    	'eps_region': [[0.0, 0.05], [0.0,  0.001]],
-    	'eps_type': 'cartesian'})
     # dict_params = {
-    #     'n': 2 ** 10,
-    #     'omega': 0.618033988749895,
-    #     'alpha': [1.0],
-    #     'potential': 'pot1_1d'}
+    # 	'n': 2 ** 9,
+    # 	'omega': 1.0,
+    # 	'alpha': [1.246979603717467, 2.801937735804838],
+    # 	'alpha_perp': [2.801937735804838, -1.246979603717467],
+    # 	'potential': 'pot1_2d'}
     # dict_params.update({
-    #     'eps_n': 128,
-    #     'eps_region': [[0.0, 2.0], [-0.8, 0.8]],
-    #     'eps_type': 'cartesian'})
+    # 	'eps_n': 128,
+    # 	'eps_region': [[0.0, 0.05], [0.0,  0.01]],
+    # 	'eps_type': 'cartesian'})
+    dict_params = {
+        'n': 2 ** 10,
+        'omega': 0.618033988749895,
+        'alpha': [1.0],
+        'potential': 'pot1_1d'}
     dict_params.update({
-        'tolmax': 1e5,
+        'eps_n': 1024,
+        'eps_region': [[0.0, 2.0], [0.0, 0.8]],
+        'eps_type': 'cartesian'})
+    dict_params.update({
+        'tolmax': 1e2,
         'tolmin': 1e-10,
-        'threshold': 1e-14,
+        'threshold': 1e-12,
         'precision': 64,
         'save_results': False})
     alpha = dict_params['alpha']
@@ -39,8 +39,16 @@ def main():
         'pot2_2d': lambda phi, eps: alpha[0] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[0])) + alpha[1] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
     }.get(dict_params['potential'], 'pot1_2d')
     case = qpFK(dv, dict_params)
-    data = cv.region(case, parallel=False)
-    plt.pcolor(data[:, :, 0])
+    data = cv.region(case, scale='lin', output='all')
+    if case.eps_type == 'cartesian':
+        plt.pcolor(data[:, :, 0])
+    elif case.eps_type == 'polar':
+        eps_region = xp.array(case.eps_region)
+        radii = xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n)
+        thetas = xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)
+        r, theta = xp.meshgrid(radii, thetas)
+        fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+        ax.contourf(theta, r, data[:, :, 0])
     plt.show()
 
 
@@ -82,11 +90,11 @@ class qpFK:
         fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
         h_thresh = ifftn(fft_h)
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
-        lfunc = 1.0 + 2j * xp.pi * ifftn(self.alpha_nu * fft_h)
+        fft_l = 2j * xp.pi * self.alpha_nu * fft_h
+        fft_l[self.zero_] = 1.0 * self.rescale_fft
+        lfunc = ifftn(fft_l)
         epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
         fft_leps = fftn(lfunc * epsilon)
-        fft_l = 2j * xp.pi * self.alpha_nu * fft_h * self.rescale_fft
-        fft_l[self.zero_] = 1.0 * self.rescale_fft
         delta = - fft_leps[self.zero_] / fft_l[self.zero_]
         w = ifftn((delta * fft_l + fft_leps) * self.sml_div)
         ll = lfunc * ifftn(fft_l * self.exp_alpha_nu.conj())
