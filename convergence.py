@@ -50,38 +50,35 @@ def line(epsilon, case, getnorm=[False, 0]):
     return results
 
 
+def coord(case):
+    eps_region = xp.array(case.eps_region)
+    eps_vecs = xp.linspace(eps_region[:, 0], eps_region[:, 1], case.eps_n)
+    if case.eps_type == 'cartesian':
+        y = []
+        for it in range(case.eps_n):
+            eps_copy = eps_vecs.copy()
+            eps_copy[:, case.indx[0]] = eps_vecs[it, case.indx[0]]
+            y.append(eps_copy)
+    elif case.eps_type == 'polar':
+        thetas = eps_vecs[case.indx[1]]
+        radii = eps_vecs[case.indx[0]]
+        y = []
+        for it in range(case.eps_n):
+            eps_copy = eps_vecs.copy()
+            eps_copy[:, case.indx[0]] = radii * xp.cos(thetas[it])
+            eps_copy[:, case.indx[1]] = radii * xp.sin(thetas[it])
+            y.append(eps_copy)
+    return y
+
+
 def region(case, scale='lin', output='all'):
     timestr = time.strftime("%Y%m%d_%H%M")
     num_cores = multiprocess.cpu_count()
     pool = multiprocess.Pool(num_cores)
-    eps_region = xp.array(case.eps_region)
     data = []
-    if case.eps_type == 'cartesian':
-        eps_perp = xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n)
-        eps_para = xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)
-        line_ = lambda eps1: line(xp.array([eps1 * xp.ones_like(eps_para), eps_para]).transpose().reshape(-1, 2), case)
-        for result in tqdm(pool.imap(line_, iterable=eps_perp)):
-            data.append(result)
-    elif case.eps_type == 'polar':
-        thetas = xp.linspace(eps_region[1, 0], eps_region[1, 1], case.eps_n)
-        if output == 'all':
-            if scale == 'lin':
-                radii = xp.linspace(eps_region[0, 0], eps_region[0, 1], case.eps_n)
-            elif scale == 'log':
-                radii = eps_region[0, 1] * (1.0 - xp.logspace(xp.log10((eps_region[0, 1] - eps_region[0, 0]) / eps_region[0, 1]), xp.log10(case.tolmin), case.eps_n))
-            line_ = lambda theta: line(xp.array([radii * xp.cos(theta), radii * xp.sin(theta)]).transpose().reshape(-1, 2), case)
-            for result in tqdm(pool.imap(line_, iterable=thetas)):
-                data.append(result)
-        elif output == 'critical':
-            for theta in thetas:
-                eps_min, eps_max = eps_region[0]
-                while xp.abs(eps_min - eps_max) >= case.tolmin:
-                    eps_mid = (eps_min + eps_max) / 2.0
-                    if point([eps_mid * xp.cos(theta), eps_mid * xp.sin(theta)], case)[0]:
-                        eps_min = eps_mid
-                    else:
-                        eps_max = eps_mid
-                data.append(eps_min)
-            return data
+    eps_vecs = coord(case)
+    line_ = lambda it: line(eps_vecs[it], case)
+    for result in tqdm(pool.imap(line_, iterable=range(case.eps_n))):
+        data.append(result)
     save_data('region', xp.array(data).reshape((case.eps_n, case.eps_n, -1)), timestr, case)
     return xp.array(data).reshape((case.eps_n, case.eps_n, -1))

@@ -18,14 +18,15 @@ def main():
     # 	'eps_region': [[0.0, 0.05], [0.0,  0.01]],
     # 	'eps_type': 'cartesian'})
     dict_params = {
-        'n': 2 ** 10,
+        'n': 2 ** 8,
         'omega': 0.618033988749895,
         'alpha': [1.0],
         'potential': 'pot1_1d'}
     dict_params.update({
-        'eps_n': 256,
-        'eps_region': [[0.0, 2.0], [0.0, 0.8]],
-        'eps_type': 'cartesian'})
+        'eps_n': 64,
+        'eps_region': [[0.0, 2.0], [0.0, xp.pi/2]],
+        'indx': [0, 1],
+        'eps_type': 'polar'})
     dict_params.update({
         'tolmax': 1e5,
         'tolmin': 1e-8,
