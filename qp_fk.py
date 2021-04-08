@@ -23,13 +23,14 @@ def main():
         'alpha': [1.0],
         'potential': 'pot1_1d'}
     dict_params.update({
-        'eps_n': 1024,
+        'eps_n': 256,
         'eps_region': [[0.0, 2.0], [0.0, 0.8]],
         'eps_type': 'cartesian'})
     dict_params.update({
-        'tolmax': 1e3,
+        'tolmax': 1e5,
         'tolmin': 1e-8,
-        'threshold': 1e-10,
+        'maxiter': 1000,
+        'threshold': 1e-9,
         'precision': 64,
         'save_results': False})
     alpha = dict_params['alpha']
@@ -70,30 +71,30 @@ class qpFK:
         self.zero_ = dim * (0,)
         ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
         nu = xp.asarray(xp.meshgrid(*ind_nu, indexing='ij'), dtype=self.precision)
-        self.alpha_nu = xp.einsum('i,i...->...', self.alpha, nu)
+        self.alpha_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha, nu)
         if hasattr(self, 'alpha_perp'):
             self.alpha_perp = xp.array(self.alpha_perp, self.precision)
             self.alpha_perp_nu = xp.einsum('i,i...->...', self.alpha_perp, nu)
-        self.exp_alpha_nu = xp.exp(2j * xp.pi * self.omega * self.alpha_nu)
-        self.lk_alpha_nu = 2.0 * (xp.cos(2.0 * xp.pi * self.omega * self.alpha_nu) - 1.0)
+        self.exp_alpha_nu = xp.exp(1j * self.omega * self.alpha_nu)
+        self.lk = 2.0 * (xp.cos(self.omega * self.alpha_nu) - 1.0)
         self.sml_div = self.exp_alpha_nu - 1.0
         self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
         ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
         self.phi = xp.asarray(xp.meshgrid(*ind_phi, indexing='ij'), dtype=self.precision)
         self.rescale_fft = self.n ** dim
         self.threshold *= self.rescale_fft
-        self.ilk_alpha_nu = xp.divide(1.0, self.lk_alpha_nu, where=self.lk_alpha_nu!=0)
-        self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * self.ilk_alpha_nu), 0.0]
+        ilk = xp.divide(1.0, self.lk, where=self.lk!=0)
+        self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * ilk), 0.0]
 
     def refine_h(self, h, lam, eps):
         fft_h = fftn(h)
         fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
         h_thresh = ifftn(fft_h)
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
-        fft_l = 2j * xp.pi * self.alpha_nu * fft_h
-        fft_l[self.zero_] = 1.0 * self.rescale_fft
+        fft_l = 1j * self.alpha_nu * fft_h
+        fft_l[self.zero_] = self.rescale_fft
         lfunc = ifftn(fft_l)
-        epsilon = ifftn(self.lk_alpha_nu * fft_h) + lam + self.dv(arg_v, eps)
+        epsilon = ifftn(self.lk * fft_h) + lam + self.dv(arg_v, eps)
         fft_leps = fftn(lfunc * epsilon)
         delta = - fft_leps[self.zero_] / fft_l[self.zero_]
         w = ifftn((delta * fft_l + fft_leps) * self.sml_div)
@@ -101,11 +102,11 @@ class qpFK:
         fft_wll = fftn(w / ll)
         fft_ill = fftn(1.0 / ll)
         w0 = - fft_wll[self.zero_] / fft_ill[self.zero_]
-        delol = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj())
-        h = xp.real(h_thresh + delol * lfunc)
+        beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()) * lfunc
+        h = xp.real(h_thresh + beta - xp.mean(beta) * lfunc / xp.mean(lfunc))
         lam = xp.real(lam + delta)
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
-        err = xp.abs(ifftn(self.lk_alpha_nu * fftn(h)) + lam + self.dv(arg_v, eps)).max()
+        err = xp.abs(ifftn(self.lk * fftn(h)) + lam + self.dv(arg_v, eps)).max()
         return h, lam, err
 
     def norms(self, h, r=0):
