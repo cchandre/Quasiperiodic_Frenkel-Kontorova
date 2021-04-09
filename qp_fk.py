@@ -34,11 +34,10 @@ def main():
         'threshold': 1e-9,
         'precision': 64,
         'save_results': False})
-    alpha = dict_params['alpha']
     dv = {
-        'pot1_1d': lambda phi, eps: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
-        'pot1_2d': lambda phi, eps: alpha[0] * eps[0] * xp.sin(phi[0]) + alpha[1] * eps[1] * xp.sin(phi[1]),
-        'pot2_2d': lambda phi, eps: alpha[0] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[0])) + alpha[1] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
+        'pot1_1d': lambda phi, eps, alpha: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
+        'pot1_2d': lambda phi, eps, alpha: alpha[0] * eps[0] * xp.sin(phi[0]) + alpha[1] * eps[1] * xp.sin(phi[1]),
+        'pot2_2d': lambda phi, eps, alpha: alpha[0] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[0])) + alpha[1] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
     }.get(dict_params['potential'], 'pot1_2d')
     case = qpFK(dv, dict_params)
     data = cv.region(case)
@@ -65,27 +64,27 @@ class qpFK:
         for key in dict_params:
             setattr(self, key, dict_params[key])
         self.DictParams = dict_params
-        self.precision = {32: xp.float32, 64: xp.float64, 128: xp.float128}.get(self.precision, xp.float64)
+        self.precision = {64: xp.float64, 128: xp.float128}.get(self.precision, xp.float64)
         self.dv = dv
         dim = len(self.alpha)
-        self.alpha = xp.array(self.alpha, self.precision)
+        self.alpha = xp.array(self.alpha, dtype=self.precision)
         self.zero_ = dim * (0,)
         ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
-        nu = xp.asarray(xp.meshgrid(*ind_nu, indexing='ij'), dtype=self.precision)
+        nu = xp.meshgrid(*ind_nu, indexing='ij').astype(self.precision)
         self.alpha_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha, nu)
         if hasattr(self, 'alpha_perp'):
-            self.alpha_perp = xp.array(self.alpha_perp, self.precision)
+            self.alpha_perp = xp.array(self.alpha_perp, dtype=self.precision)
             self.alpha_perp_nu = xp.einsum('i,i...->...', self.alpha_perp, nu)
         self.exp_alpha_nu = xp.exp(1j * self.omega * self.alpha_nu)
         self.lk = 2.0 * (xp.cos(self.omega * self.alpha_nu) - 1.0)
         self.sml_div = self.exp_alpha_nu - 1.0
         self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
-        ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False),)
-        self.phi = xp.asarray(xp.meshgrid(*ind_phi, indexing='ij'), dtype=self.precision)
-        self.rescale_fft = self.n ** dim
-        self.threshold *= self.rescale_fft
+        ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False, dtype=self.precision),)
+        self.phi = xp.meshgrid(*ind_phi, indexing='ij').astype(self.precision)
+        self.rescale_fft = self.precision(self.n ** dim)
+        self.threshold = self.precision(self.threshold * self.rescale_fft)
         ilk = xp.divide(1.0, self.lk, where=self.lk!=0)
-        self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps)) * ilk), 0.0]
+        self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps, self.alpha)) * ilk), 0.0]
 
     def refine_h(self, h, lam, eps):
         fft_h = fftn(h)
@@ -95,7 +94,7 @@ class qpFK:
         fft_l = 1j * self.alpha_nu * fft_h
         fft_l[self.zero_] = self.rescale_fft
         lfunc = ifftn(fft_l)
-        epsilon = ifftn(self.lk * fft_h) + lam + self.dv(arg_v, eps)
+        epsilon = ifftn(self.lk * fft_h) + lam + self.dv(arg_v, eps, self.alpha)
         fft_leps = fftn(lfunc * epsilon)
         delta = - fft_leps[self.zero_] / fft_l[self.zero_]
         w = ifftn((delta * fft_l + fft_leps) * self.sml_div)
@@ -107,7 +106,7 @@ class qpFK:
         h = xp.real(h_thresh + beta - xp.mean(beta) * lfunc / xp.mean(lfunc))
         lam = xp.real(lam + delta)
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
-        err = xp.abs(ifftn(self.lk * fftn(h)) + lam + self.dv(arg_v, eps)).max()
+        err = xp.abs(ifftn(self.lk * fftn(h)) + lam + self.dv(arg_v, eps, self.alpha)).max()
         return h, lam, err
 
     def norms(self, h, r=0):

@@ -51,8 +51,8 @@ def line(epsilon, case, getnorm=[False, 0]):
 
 def region(case):
     timestr = time.strftime("%Y%m%d_%H%M")
-    eps_region = xp.array(case.eps_region)
-    eps_vecs = xp.linspace(eps_region[:, 0], eps_region[:, 1], case.eps_n)
+    eps_region = xp.array(case.eps_region, dtype=case.precision)
+    eps_vecs = xp.linspace(eps_region[:, 0], eps_region[:, 1], case.eps_n, dtype=case.precision)
     if case.eps_type == 'cartesian':
         eps_list = []
         for it in range(case.eps_n):
@@ -70,9 +70,9 @@ def region(case):
             eps_list.append(eps_copy)
     num_cores = multiprocess.cpu_count()
     pool = multiprocess.Pool(num_cores)
-    data = []
+    results = []
     line_ = lambda it: line(eps_list[it], case)
     for result in tqdm(pool.imap(line_, iterable=range(case.eps_n)), total=case.eps_n):
-        data.append(result)
-    save_data('region', xp.array(data).reshape((case.eps_n, case.eps_n, -1)), timestr, case)
-    return xp.array(data).reshape((case.eps_n, case.eps_n, -1))
+        results.append(result)
+    save_data('region', xp.array(results).reshape((case.eps_n, case.eps_n, -1)), timestr, case)
+    return xp.array(results).reshape((case.eps_n, case.eps_n, -1))
