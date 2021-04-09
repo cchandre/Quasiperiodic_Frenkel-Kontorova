@@ -1,7 +1,7 @@
 import numpy as xp
 from numpy.fft import fftn, ifftn, fftfreq
 import matplotlib.pyplot as plt
-import Quasiperiodic_FrenkelKontorova.convergence as cv
+import convergence as cv
 import warnings
 warnings.filterwarnings("ignore")
 
