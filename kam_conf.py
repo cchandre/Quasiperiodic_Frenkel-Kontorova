@@ -37,7 +37,7 @@ def main():
 		'pot1_2d': lambda phi, eps, Omega: Omega[0] * eps[0] * xp.sin(phi[0]) + eps[1] * (Omega[0] + Omega[1]) * xp.sin(phi[0] + phi[1]),
 		'pot1_3d': lambda phi, eps, Omega: - Omega[0] * eps[0] * xp.sin(phi[0]) - Omega[1] * eps[1] * xp.sin(phi[1]) - Omega[2] * eps[2] * xp.sin(phi[2])
 		}.get(dict_params['potential'], 'pot1_2d')
-	case = confKAM(dv, dict_params)
+	case = ConfKAM(dv, dict_params)
 	data = cv.region(case)
 	if case.eps_type == 'cartesian':
 		plt.pcolor(data[:, :, 0].transpose())
@@ -51,7 +51,7 @@ def main():
 	plt.show()
 
 
-class confKAM:
+class ConfKAM:
 	def __repr__(self):
 		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
 
@@ -77,7 +77,7 @@ class confKAM:
 		self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
 		ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False, dtype=self.precision),)
 		self.phi = xp.meshgrid(*ind_phi, indexing='ij').astype(self.precision)
-		self.rescale_fft = self.n ** dim
+		self.rescale_fft = self.precision(self.n ** dim)
 		self.threshold *= self.rescale_fft
 		ilk = xp.divide(1.0, self.lk, where=self.lk!=0)
 		self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps, self.Omega)) * ilk), 0.0]

@@ -82,7 +82,7 @@ class qpFK:
         ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False, dtype=self.precision),)
         self.phi = xp.meshgrid(*ind_phi, indexing='ij').astype(self.precision)
         self.rescale_fft = self.precision(self.n ** dim)
-        self.threshold = self.precision(self.threshold * self.rescale_fft)
+        self.threshold *= self.rescale_fft
         ilk = xp.divide(1.0, self.lk, where=self.lk!=0)
         self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps, self.alpha)) * ilk), 0.0]
 
