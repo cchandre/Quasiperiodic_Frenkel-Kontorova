@@ -30,7 +30,6 @@ def point(eps, case, h=[], lam=[], gethull=False, getnorm=[False, 0]):
     if gethull:
         timestr = time.strftime("%Y%m%d_%H%M")
         save_data('hull', h_, timestr, case)
-        return [int(err <= case.tolmin), it_count], h_, lam_
     if getnorm[0]:
         return [int(err <= case.tolmin), it_count], h_, lam_, case.norms(h_, getnorm[1])
     return [int(err <= case.tolmin), it_count], h_, lam_
@@ -50,35 +49,30 @@ def line(epsilon, case, getnorm=[False, 0]):
     return results
 
 
-def coord(case):
+def region(case):
+    timestr = time.strftime("%Y%m%d_%H%M")
     eps_region = xp.array(case.eps_region)
     eps_vecs = xp.linspace(eps_region[:, 0], eps_region[:, 1], case.eps_n)
     if case.eps_type == 'cartesian':
-        y = []
+        eps_list = []
         for it in range(case.eps_n):
             eps_copy = eps_vecs.copy()
-            eps_copy[:, case.indx[0]] = eps_vecs[it, case.indx[0]]
-            y.append(eps_copy)
+            eps_copy[:, case.eps_indx[0]] = eps_vecs[it, case.eps_indx[0]]
+            eps_list.append(eps_copy)
     elif case.eps_type == 'polar':
-        thetas = eps_vecs[case.indx[1]]
-        radii = eps_vecs[case.indx[0]]
-        y = []
+        thetas = eps_vecs[:, case.eps_indx[1]]
+        radii = eps_vecs[:, case.eps_indx[0]]
+        eps_list = []
         for it in range(case.eps_n):
             eps_copy = eps_vecs.copy()
-            eps_copy[:, case.indx[0]] = radii * xp.cos(thetas[it])
-            eps_copy[:, case.indx[1]] = radii * xp.sin(thetas[it])
-            y.append(eps_copy)
-    return y
-
-
-def region(case, scale='lin', output='all'):
-    timestr = time.strftime("%Y%m%d_%H%M")
+            eps_copy[:, case.eps_indx[0]] = radii * xp.cos(thetas[it])
+            eps_copy[:, case.eps_indx[1]] = radii * xp.sin(thetas[it])
+            eps_list.append(eps_copy)
     num_cores = multiprocess.cpu_count()
     pool = multiprocess.Pool(num_cores)
     data = []
-    eps_vecs = coord(case)
-    line_ = lambda it: line(eps_vecs[it], case)
-    for result in tqdm(pool.imap(line_, iterable=range(case.eps_n))):
+    line_ = lambda it: line(eps_list[it], case)
+    for result in tqdm(pool.imap(line_, iterable=range(case.eps_n)), total=case.eps_n):
         data.append(result)
     save_data('region', xp.array(data).reshape((case.eps_n, case.eps_n, -1)), timestr, case)
     return xp.array(data).reshape((case.eps_n, case.eps_n, -1))
