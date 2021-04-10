@@ -70,7 +70,7 @@ class qpFK:
         self.alpha = xp.array(self.alpha, dtype=self.precision)
         self.zero_ = dim * (0,)
         ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
-        nu = xp.meshgrid(*ind_nu, indexing='ij').astype(self.precision)
+        nu = xp.meshgrid(*ind_nu, indexing='ij')
         self.alpha_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha, nu)
         if hasattr(self, 'alpha_perp'):
             self.alpha_perp = xp.array(self.alpha_perp, dtype=self.precision)
@@ -80,7 +80,7 @@ class qpFK:
         self.sml_div = self.exp_alpha_nu - 1.0
         self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
         ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False, dtype=self.precision),)
-        self.phi = xp.meshgrid(*ind_phi, indexing='ij').astype(self.precision)
+        self.phi = xp.meshgrid(*ind_phi, indexing='ij')
         self.rescale_fft = self.precision(self.n ** dim)
         self.threshold *= self.rescale_fft
         ilk = xp.divide(1.0, self.lk, where=self.lk!=0)

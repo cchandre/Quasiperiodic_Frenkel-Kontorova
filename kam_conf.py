@@ -6,49 +6,52 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def main():
-	# dict_params = {
-	# 	'n': 2 ** 7,
-	# 	'omega0': [0.618033988749895, -1.0],
-	# 	'Omega': [1.0, 0.0],
-	# 	'potential': 'pot1_2d'}
-	# dict_params.update({
-	# 	'eps_n': 256,
-	# 	'eps_region': [[0.0, 0.1], [0.0,  0.1]],
-	# 	'eps_indx': [0, 1],
-	# 	'eps_type': 'polar'})
 	dict_params = {
-		'n': 2 ** 7,
-		'omega0': [1.754877666246693, 1.324717957244746, 1.0],
-		'Omega': [1.0, 1.0, -1.0],
-		'potential': 'pot1_3d'}
+		'n': 2 ** 12,
+		'omega0': [0.618033988749895, -1.0],
+		'Omega': [1.0, 0.0],
+		'potential': 'pot1_2d'}
 	dict_params.update({
-		'eps_n': 128,
-		'eps_region': [[0.0, 0.15], [0.0,  xp.pi/2.0], [0.1, 0.1]],
+		'eps_n': 256,
+		'eps_region': [[0.0, 0.1], [xp.pi/4,  xp.pi/4]],
 		'eps_indx': [0, 1],
 		'eps_type': 'polar'})
+	# dict_params = {
+	# 	'n': 2 ** 7,
+	# 	'omega0': [1.754877666246693, 1.324717957244746, 1.0],
+	# 	'Omega': [1.0, 1.0, -1.0],
+	# 	'potential': 'pot1_3d'}
+	# dict_params.update({
+	# 	'eps_n': 128,
+	# 	'eps_region': [[0.0, 0.15], [0.0,  xp.pi/2.0], [0.1, 0.1]],
+	# 	'eps_indx': [0, 1],
+	# 	'eps_type': 'polar'})
 	dict_params.update({
 		'tolmax': 1e2,
 		'tolmin': 1e-8,
+		'dist_surf': 1e-5,
 		'maxiter': 100,
 		'threshold': 1e-9,
 		'precision': 64,
-		'save_results': True})
+		'save_results': False})
 	dv = {
 		'pot1_2d': lambda phi, eps, Omega: Omega[0] * eps[0] * xp.sin(phi[0]) + eps[1] * (Omega[0] + Omega[1]) * xp.sin(phi[0] + phi[1]),
 		'pot1_3d': lambda phi, eps, Omega: - Omega[0] * eps[0] * xp.sin(phi[0]) - Omega[1] * eps[1] * xp.sin(phi[1]) - Omega[2] * eps[2] * xp.sin(phi[2])
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = ConfKAM(dv, dict_params)
-	data = cv.region(case)
-	if case.eps_type == 'cartesian':
-		plt.pcolor(data[:, :, 0].transpose())
-	elif case.eps_type == 'polar':
-		eps_region = xp.array(case.eps_region)
-		radii = xp.linspace(eps_region[case.eps_indx[0], 0], eps_region[case.eps_indx[0], 1], case.eps_n)
-		thetas = xp.linspace(eps_region[case.eps_indx[1], 0], eps_region[case.eps_indx[1], 1], case.eps_n)
-		r, theta = xp.meshgrid(radii, thetas)
-		fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-		ax.contourf(theta, r, data[:, :, 0])
-	plt.show()
+	data = cv.line(case.eps_region, case, method='critical', display=True)
+	print(data)
+	# data = cv.region(case)
+	# if case.eps_type == 'cartesian':
+	# 	plt.pcolor(data[:, :, 0].transpose())
+	# elif case.eps_type == 'polar':
+	# 	eps_region = xp.array(case.eps_region)
+	# 	radii = xp.linspace(eps_region[case.eps_indx[0], 0], eps_region[case.eps_indx[0], 1], case.eps_n)
+	# 	thetas = xp.linspace(eps_region[case.eps_indx[1], 0], eps_region[case.eps_indx[1], 1], case.eps_n)
+	# 	r, theta = xp.meshgrid(radii, thetas)
+	# 	fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+	# 	ax.contourf(theta, r, data[:, :, 0])
+	# plt.show()
 
 
 class ConfKAM:
@@ -68,7 +71,7 @@ class ConfKAM:
 		self.omega0 = xp.array(self.omega0, dtype=self.precision)
 		self.zero_ = dim * (0,)
 		ind_nu = dim * (fftfreq(self.n, d=1.0/self.precision(self.n)),)
-		nu = xp.meshgrid(*ind_nu, indexing='ij').astype(self.precision)
+		nu = xp.meshgrid(*ind_nu, indexing='ij')
 		self.omega0_nu = xp.einsum('i,i...->...', self.omega0, nu)
 		self.Omega = xp.array(self.Omega, dtype=self.precision)
 		self.Omega_nu = xp.einsum('i,i...->...', self.Omega, nu)
@@ -76,7 +79,7 @@ class ConfKAM:
 		self.sml_div = 1j * self.omega0_nu
 		self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
 		ind_phi = dim * (xp.linspace(0.0, 2.0 * xp.pi, self.n, endpoint=False, dtype=self.precision),)
-		self.phi = xp.meshgrid(*ind_phi, indexing='ij').astype(self.precision)
+		self.phi = xp.meshgrid(*ind_phi, indexing='ij')
 		self.rescale_fft = self.precision(self.n ** dim)
 		self.threshold *= self.rescale_fft
 		ilk = xp.divide(1.0, self.lk, where=self.lk!=0)

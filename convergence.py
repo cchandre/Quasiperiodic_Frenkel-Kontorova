@@ -35,18 +35,40 @@ def point(eps, case, h=[], lam=[], gethull=False, getnorm=[False, 0]):
     return [int(err <= case.tolmin), it_count], h_, lam_
 
 
-def line(epsilon, case, getnorm=[False, 0]):
-    h, lam = case.initial_h(epsilon[0])
-    results = []
-    for eps in epsilon:
-        result, h_, lam_ = point(eps, case, h=h, lam=lam)
-        if result[0] == 1:
-            h = h_.copy()
-            lam = lam_
-        else:
-            h, lam = case.initial_h(eps)
-        results.append(result)
-    return results
+def line(epsilon, case, getnorm=[False, 0], method=[], display=False):
+    if method == 'critical':
+        epsilon_ = xp.array(epsilon, dtype=case.precision)
+        epsmin = epsilon_[case.eps_indx[0], 0]
+        epsmax = epsilon_[case.eps_indx[0], 1]
+        epsvec = epsilon_[:, 0].copy()
+        h = []
+        lam = []
+        while abs(epsmax - epsmin) >= case.dist_surf:
+            epsmid = (epsmax + epsmin) / 2.0
+            epsvec[case.eps_indx[0]] = epsmid * xp.cos(epsilon_[case.eps_indx[1], 0])
+            epsvec[case.eps_indx[1]] = epsmid * xp.sin(epsilon_[case.eps_indx[1], 0])
+            if display:
+                print([epsmin * xp.cos(epsilon_[case.eps_indx[1], 0]), epsmax * xp.cos(epsilon_[case.eps_indx[1], 0])])
+            result, h_, lam_ = point(epsvec, case, h, lam)
+            if result[0] == 1:
+                epsmin = epsmid
+                h = h_.copy()
+                lam = lam_
+            else:
+                epsmax = epsmid
+        return [epsmin * xp.cos(epsilon_[case.eps_indx[1], 0]), epsmin * xp.sin(epsilon_[case.eps_indx[1], 0])]
+    else:
+        h, lam = case.initial_h(epsilon[0])
+        results = []
+        for eps in epsilon:
+            result, h_, lam_ = point(eps, case, h=h, lam=lam)
+            if result[0] == 1:
+                h = h_.copy()
+                lam = lam_
+            else:
+                h, lam = case.initial_h(eps)
+            results.append(result)
+        return results
 
 
 def region(case):
