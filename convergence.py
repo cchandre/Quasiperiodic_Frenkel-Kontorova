@@ -66,9 +66,10 @@ def line(epsilon, case, getnorm=[False, 0], method=[], display=False):
                 h = h_.copy()
                 lam = lam_
             else:
-                h, lam = case.initial_h(eps)
+                h = []
+                lam = []
             results.append(result)
-        return results
+        return xp.array(results)[:, 0], xp.array(results)[:, 1]
 
 
 def region(case):
@@ -79,7 +80,7 @@ def region(case):
         eps_list = []
         for it in range(case.eps_n):
             eps_copy = eps_vecs.copy()
-            eps_copy[:, case.eps_indx[0]] = eps_vecs[it, case.eps_indx[0]]
+            eps_copy[:, case.eps_indx[1]] = eps_vecs[it, case.eps_indx[1]]
             eps_list.append(eps_copy)
     elif case.eps_type == 'polar':
         thetas = eps_vecs[:, case.eps_indx[1]]
@@ -92,9 +93,11 @@ def region(case):
             eps_list.append(eps_copy)
     num_cores = multiprocess.cpu_count()
     pool = multiprocess.Pool(num_cores)
-    results = []
+    convs = []
+    iters = []
     line_ = lambda it: line(eps_list[it], case)
-    for result in tqdm(pool.imap(line_, iterable=range(case.eps_n)), total=case.eps_n):
-        results.append(result)
-    save_data('region', xp.array(results).reshape((case.eps_n, case.eps_n, -1)), timestr, case)
-    return xp.array(results).reshape((case.eps_n, case.eps_n, -1))
+    for conv, iter in tqdm(pool.imap(line_, iterable=range(case.eps_n)), total=case.eps_n):
+        convs.append(conv)
+        iters.append(iter)
+    save_data('region', xp.array(convs), timestr, case, info=xp.array(iters))
+    return xp.array(convs)

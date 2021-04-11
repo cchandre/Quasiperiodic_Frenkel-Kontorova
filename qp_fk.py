@@ -15,18 +15,19 @@ def main():
     # 	'potential': 'pot1_2d'}
     # dict_params.update({
     # 	'eps_n': 128,
-    # 	'eps_region': [[0.0, 0.05], [0.0,  0.01]],
-    # 	'eps_type': 'cartesian'})
+    # 	'eps_region': [[0.0, 0.05], [0.0,  xp.pi/2.0]],
+    #     'eps_indx': [0, 1],
+    # 	'eps_type': 'polar'})
     dict_params = {
-        'n': 2 ** 8,
+        'n': 2 ** 10,
         'omega': 0.618033988749895,
         'alpha': [1.0],
         'potential': 'pot1_1d'}
     dict_params.update({
         'eps_n': 512,
-        'eps_region': [[0.0, 2.0], [-xp.pi, xp.pi]],
+        'eps_region': [[0.0, 2.0], [0.0, 0.8]],
         'eps_indx': [0, 1],
-        'eps_type': 'polar'})
+        'eps_type': 'cartesian'})
     dict_params.update({
         'tolmax': 1e5,
         'tolmin': 1e-8,
@@ -42,14 +43,14 @@ def main():
     case = qpFK(dv, dict_params)
     data = cv.region(case)
     if case.eps_type == 'cartesian':
-        plt.pcolor(data[:, :, 0].transpose())
+        plt.pcolor(data)
     elif case.eps_type == 'polar':
         eps_region = xp.array(case.eps_region)
         radii = xp.linspace(eps_region[case.eps_indx[0], 0], eps_region[case.eps_indx[0], 1], case.eps_n)
         thetas = xp.linspace(eps_region[case.eps_indx[1], 0], eps_region[case.eps_indx[1], 1], case.eps_n)
         r, theta = xp.meshgrid(radii, thetas)
         fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-        ax.contourf(theta, r, data[:, :, 0])
+        ax.contourf(theta, r, data)
     plt.show()
 
 
