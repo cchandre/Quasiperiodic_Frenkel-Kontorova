@@ -3,6 +3,7 @@ from tqdm import tqdm
 import multiprocess
 from scipy.io import savemat
 import time
+import copy
 from datetime import date
 import matplotlib.pyplot as plt
 
@@ -16,24 +17,21 @@ def save_data(name, data, timestr, case, info=[]):
         savemat(type(case).__name__ + '_' + name + '_' + timestr + '.mat', mdic)
 
 
-def point(eps, case, h=[], lam=[], gethull=False, getnorm=[False, 0]):
-    h_ = h.copy()
-    lam_ = lam
-    if len(h_) == 0:
-        h_, lam_ = case.initial_h(eps)
+def point(eps, case, hull, gethull=False, getnorm=[False, 0]):
+    hull_ = copy.deepcopy(hull)
     err = 1.0
     it_count = 0
     while (case.tolmax >= err >= case.tolmin) and (it_count <= case.maxiter):
-        h_, lam_, err = case.refine_h(h_, lam_, eps)
+        hull_, err = case.image_h(hull_, eps)
         it_count += 1
     if err <= case.tolmin:
         it_count = 0
     if gethull:
         timestr = time.strftime("%Y%m%d_%H%M")
-        save_data('hull', h_, timestr, case)
+        save_data('hull', hull_.h, timestr, case)
     if getnorm[0]:
-        return [int(err <= case.tolmin), it_count], h_, lam_, case.norms(h_, getnorm[1])
-    return [int(err <= case.tolmin), it_count], h_, lam_
+        return [int(err <= case.tolmin), it_count], hull_, case.norms(hull_, getnorm[1])
+    return [int(err <= case.tolmin), it_count], hull_
 
 
 def line(epsilon, case, getnorm=[False, 0], method=[], display=False):
@@ -42,33 +40,32 @@ def line(epsilon, case, getnorm=[False, 0], method=[], display=False):
         epsmin = epsilon_[case.eps_indx[0], 0]
         epsmax = epsilon_[case.eps_indx[0], 1]
         epsvec = epsilon_[:, 0].copy()
-        h = []
-        lam = []
+        hull = []
         while abs(epsmax - epsmin) >= case.dist_surf:
             epsmid = (epsmax + epsmin) / 2.0
             epsvec[case.eps_indx[0]] = epsmid * xp.cos(epsilon_[case.eps_indx[1], 0])
             epsvec[case.eps_indx[1]] = epsmid * xp.sin(epsilon_[case.eps_indx[1], 0])
+            if not hull:
+                hull = case.initial_h(epsvec)
             if display:
                 print([epsmin * xp.cos(epsilon_[case.eps_indx[1], 0]), epsmax * xp.cos(epsilon_[case.eps_indx[1], 0])])
-            result, h_, lam_ = point(epsvec, case, h, lam)
+            result, hull_ = point(epsvec, case, hull=hull)
             if result[0] == 1:
                 epsmin = epsmid
-                h = h_.copy()
-                lam = lam_
+                hull = copy.deepcopy(hull_)
             else:
                 epsmax = epsmid
+                hull = case.initial_h(epsvec)
         return [epsmin * xp.cos(epsilon_[case.eps_indx[1], 0]), epsmin * xp.sin(epsilon_[case.eps_indx[1], 0])]
     else:
-        h, lam = case.initial_h(epsilon[0])
+        hull = case.initial_h(epsilon[0])
         results = []
         for eps in epsilon:
-            result, h_, lam_ = point(eps, case, h=h, lam=lam)
+            result, hull_ = point(eps, case, hull=hull)
             if result[0] == 1:
-                h = h_.copy()
-                lam = lam_
+                hull = copy.deepcopy(hull_)
             else:
-                h = []
-                lam = []
+                hull = case.initial_h(eps)
             results.append(result)
         return xp.array(results)[:, 0], xp.array(results)[:, 1]
 

@@ -1,8 +1,7 @@
 import numpy as xp
 from numpy.fft import fftn, ifftn, fftfreq
-import matplotlib.pyplot as plt
-import warnings
 import convergence as cv
+import warnings
 warnings.filterwarnings("ignore")
 
 
@@ -31,10 +30,12 @@ def main():
     dict_params.update({
         'tolmax': 1e5,
         'tolmin': 1e-8,
+        'dist_surf': 1e-5,
         'maxiter': 100,
         'threshold': 1e-9,
         'precision': 64,
-        'save_results': False})
+        'save_results': False,
+        'plot_results': True})
     dv = {
         'pot1_1d': lambda phi, eps, alpha: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
         'pot1_2d': lambda phi, eps, alpha: alpha[0] * eps[0] * xp.sin(phi[0]) + alpha[1] * eps[1] * xp.sin(phi[1]),
@@ -42,16 +43,6 @@ def main():
     }.get(dict_params['potential'], 'pot1_2d')
     case = qpFK(dv, dict_params)
     data = cv.region(case)
-    if case.eps_type == 'cartesian':
-        plt.pcolor(data)
-    elif case.eps_type == 'polar':
-        eps_region = xp.array(case.eps_region)
-        radii = xp.linspace(eps_region[case.eps_indx[0], 0], eps_region[case.eps_indx[0], 1], case.eps_n)
-        thetas = xp.linspace(eps_region[case.eps_indx[1], 0], eps_region[case.eps_indx[1], 1], case.eps_n)
-        r, theta = xp.meshgrid(radii, thetas)
-        fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-        ax.contourf(theta, r, data)
-    plt.show()
 
 
 class qpFK:
