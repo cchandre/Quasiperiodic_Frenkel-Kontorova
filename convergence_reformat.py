@@ -23,6 +23,7 @@ def point(eps, case, hull, gethull=False, getnorm=[False, 0]):
     it_count = 0
     while (case.tolmax >= err >= case.tolmin) and (it_count <= case.maxiter):
         hull_, err = case.image_h(hull_, eps)
+        print(err)
         it_count += 1
     if err <= case.tolmin:
         it_count = 0
@@ -40,22 +41,18 @@ def line(epsilon, case, getnorm=[False, 0], method=[], display=False):
         epsmin = epsilon_[case.eps_indx[0], 0]
         epsmax = epsilon_[case.eps_indx[0], 1]
         epsvec = epsilon_[:, 0].copy()
-        hull = []
         while abs(epsmax - epsmin) >= case.dist_surf:
             epsmid = (epsmax + epsmin) / 2.0
             epsvec[case.eps_indx[0]] = epsmid * xp.cos(epsilon_[case.eps_indx[1], 0])
             epsvec[case.eps_indx[1]] = epsmid * xp.sin(epsilon_[case.eps_indx[1], 0])
-            if not hull:
-                hull = case.initial_h(epsvec)
+            hull = case.initial_h(epsvec)
             if display:
                 print([epsmin * xp.cos(epsilon_[case.eps_indx[1], 0]), epsmax * xp.cos(epsilon_[case.eps_indx[1], 0])])
             result, hull_ = point(epsvec, case, hull=hull)
             if result[0] == 1:
                 epsmin = epsmid
-                hull = copy.deepcopy(hull_)
             else:
                 epsmax = epsmid
-                hull = case.initial_h(epsvec)
         return [epsmin * xp.cos(epsilon_[case.eps_indx[1], 0]), epsmin * xp.sin(epsilon_[case.eps_indx[1], 0])]
     else:
         hull = case.initial_h(epsilon[0])

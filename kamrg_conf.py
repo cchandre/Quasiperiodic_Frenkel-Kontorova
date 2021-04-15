@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 def main():
 	dict_params = {
-		'n': 2 ** 9,
+		'n': 2 ** 6,
 		'omega0': [0.618033988749895, -1.0],
 		'N': [[1, 1], [1, 0]],
 		'Omega': [1.0, 0.0],
@@ -29,11 +29,12 @@ def main():
 	# 	'eps_indx': [0, 1],
 	# 	'eps_type': 'polar'})
 	dict_params.update({
-		'tolmax': 1e2,
-		'tolmin': 1e-6,
+		'renormalization': True,
+		'tolmax': 1e5,
+		'tolmin': 1e-7,
 		'dist_surf': 1e-5,
-		'maxiter': 50,
-		'threshold': 1e-7,
+		'maxiter': 500,
+		'threshold': 1e-8,
 		'precision': 64,
 		'save_results': False,
 		'plot_results': True})
@@ -89,16 +90,18 @@ class ConfKAM:
 	def initial_h(self, eps):
 		h = - ifftn(fftn(self.dv(self.phi, eps)) * self.ilk)
 		Omega = xp.array(self.Omega, dtype=self.precision)
-		return Hull(self, h, 0.0, Omega, self.dv)
+		hull = Hull(self, h=h, lam=0.0, Omega=Omega, dv=self.dv)
+		hull.Omega_nu = xp.einsum('i,i...->...', hull.Omega, self.nu)
+		return hull
 
 	def renorm_h(self, hull):
 		hull_ = copy.deepcopy(hull)
 		omega_ = (self.N.transpose()).dot(hull.Omega)
 		n_omega_ = xp.sqrt((omega_ ** 2).sum())
 		hull_.Omega = omega_ / n_omega_
+		hull_.Omega_nu = xp.einsum('i,i...->...', hull_.Omega, self.nu)
 		hull_.lam = hull.lam * n_omega_ / self.Eigenvalue ** 2
 		hull_.dv = lambda phi, eps: self.dv(xp.einsum('ij,j...->i...', self.invN, phi), eps) * n_omega_ / self.Eigenvalue ** 2
-		hull_.Omega_nu = xp.einsum('i,i...->...', hull_.Omega, self.nu)
 		fft_h = fftn(hull.h)
 		fft_h_ = xp.zeros_like(fft_h)
 		fft_h_[self.nu_mask] = fft_h[self.N_nu_mask]
@@ -106,7 +109,6 @@ class ConfKAM:
 		return hull_
 
 	def refine_h(self, hull, eps):
-		hull_ = copy.deepcopy(hull)
 		fft_h = fftn(hull.h)
 		fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
 		h_thresh = ifftn(fft_h)
@@ -114,7 +116,7 @@ class ConfKAM:
 		fft_l = 1j * hull.Omega_nu * fft_h
 		fft_l[self.zero_] = self.rescale_fft
 		lfunc = ifftn(fft_l)
-		epsilon = ifftn(self.lk * fft_h) + hull.lam + hull_.dv(arg_v, eps)
+		epsilon = ifftn(self.lk * fft_h) + hull.lam + hull.dv(arg_v, eps)
 		fft_leps = fftn(lfunc * epsilon)
 		delta = - fft_leps[self.zero_] / fft_l[self.zero_]
 		w = ifftn((delta * fft_l + fft_leps) * self.sml_div)
@@ -122,6 +124,7 @@ class ConfKAM:
 		fft_ill = fftn(1.0 / lfunc ** 2)
 		w0 = - fft_wll[self.zero_] / fft_ill[self.zero_]
 		beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()) * lfunc
+		hull_ = copy.deepcopy(hull)
 		hull_.h = xp.real(h_thresh + beta - xp.mean(beta) * lfunc / xp.mean(lfunc))
 		hull_.lam = xp.real(hull.lam + delta)
 		arg_v = self.phi + xp.tensordot(hull.Omega, hull_.h, axes=0)
@@ -129,8 +132,10 @@ class ConfKAM:
 		return hull_, err
 
 	def image_h(self, hull, eps):
-		hull_ = self.renorm_h(hull)
-		#hull_ = copy.deepcopy(hull)
+		if self.renormalization:
+			hull_ = self.renorm_h(hull)
+		else:
+			hull_ = copy.deepcopy(hull)
 		return self.refine_h(hull_, eps)
 
 	def norms(self, hull, r=0):
