@@ -23,7 +23,6 @@ def point(eps, case, hull, gethull=False, getnorm=[False, 0]):
     it_count = 0
     while (case.tolmax >= err >= case.tolmin) and (it_count <= case.maxiter):
         hull_, err = case.image_h(hull_, eps)
-        print(err)
         it_count += 1
     if err <= case.tolmin:
         it_count = 0
@@ -59,7 +58,7 @@ def line(epsilon, case, getnorm=[False, 0], method=[], display=False):
         results = []
         for eps in epsilon:
             result, hull_ = point(eps, case, hull=hull)
-            if result[0] == 1:
+            if (result[0] == 1) and not case.renormalization:
                 hull = copy.deepcopy(hull_)
             else:
                 hull = case.initial_h(eps)

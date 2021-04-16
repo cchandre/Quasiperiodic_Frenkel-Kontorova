@@ -15,7 +15,7 @@ def main():
 		'potential': 'pot1_2d'}
 	dict_params.update({
 		'eps_n': 64,
-		'eps_region': [[0.0, 0.05], [xp.pi/4,  xp.pi/4]],
+		'eps_region': [[0.0, 0.05], [0.0,  xp.pi/2]],
 		'eps_indx': [0, 1],
 		'eps_type': 'polar'})
 	# dict_params = {
@@ -33,7 +33,7 @@ def main():
 		'tolmax': 1e5,
 		'tolmin': 1e-7,
 		'dist_surf': 1e-5,
-		'maxiter': 500,
+		'maxiter': 50,
 		'threshold': 1e-8,
 		'precision': 64,
 		'save_results': False,
@@ -44,8 +44,8 @@ def main():
 		'pot1_3d': lambda phi, eps: - Omega[0] * eps[0] * xp.sin(phi[0]) - Omega[1] * eps[1] * xp.sin(phi[1]) - Omega[2] * eps[2] * xp.sin(phi[2])
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = ConfKAM(dv, dict_params)
-	data = cv.line(case.eps_region, case, method='critical', display=True)
-	# data = cv.region(case)
+	# data = cv.line(case.eps_region, case, method='critical', display=True)
+	data = cv.region(case)
 
 
 class ConfKAM:
@@ -90,8 +90,8 @@ class ConfKAM:
 	def initial_h(self, eps):
 		h = - ifftn(fftn(self.dv(self.phi, eps)) * self.ilk)
 		Omega = xp.array(self.Omega, dtype=self.precision)
-		hull = Hull(self, h=h, lam=0.0, Omega=Omega, dv=self.dv)
-		hull.Omega_nu = xp.einsum('i,i...->...', hull.Omega, self.nu)
+		hull = Hull(h=h, lam=0.0, Omega=Omega, dv=self.dv)
+		hull.Omega_nu = xp.einsum('i,i...->...', self.Omega, self.nu)
 		return hull
 
 	def renorm_h(self, hull):
@@ -143,7 +143,7 @@ class ConfKAM:
 
 
 class Hull:
-	def __init__(self, case, h=[], lam=[], Omega=[], dv=[]):
+	def __init__(self, h=[], lam=[], Omega=[], dv=[]):
 		self.h = h
 		self.lam = lam
 		self.Omega = Omega
