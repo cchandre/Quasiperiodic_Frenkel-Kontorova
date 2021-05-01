@@ -15,9 +15,9 @@ def main():
 		'potential': 'pot1_2d'}
 	dict_params.update({
 		'eps_n': 64,
-		'eps_region': [[0.0, 0.05], [0.0,  xp.pi/2]],
+		'eps_region': [[0.0, 0.05], [0.0,  0.05]],
 		'eps_indx': [0, 1],
-		'eps_type': 'polar'})
+		'eps_type': 'cartesian'})
 	# dict_params = {
 	# 	'n': 2 ** 8,
 	# 	'omega0': [1.324717957244746, 1.754877666246693, 1.0],
@@ -29,7 +29,7 @@ def main():
 	# 	'eps_indx': [0, 1],
 	# 	'eps_type': 'polar'})
 	dict_params.update({
-		'renormalization': True,
+		'renormalization': False,
 		'tolmax': 1e5,
 		'tolmin': 1e-7,
 		'dist_surf': 1e-5,
@@ -105,6 +105,7 @@ class ConfKAM:
 		fft_h = fftn(hull.h)
 		fft_h_ = xp.zeros_like(fft_h)
 		fft_h_[self.nu_mask] = fft_h[self.N_nu_mask]
+		fft_h_[self.zero_] = 0.0
 		hull_.h = xp.real(ifftn(fft_h_)) * n_omega_
 		return hull_
 
@@ -124,12 +125,11 @@ class ConfKAM:
 		fft_ill = fftn(1.0 / lfunc ** 2)
 		w0 = - fft_wll[self.zero_] / fft_ill[self.zero_]
 		beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()) * lfunc
-		hull_ = copy.deepcopy(hull)
-		hull_.h = xp.real(h_thresh + beta - xp.mean(beta) * lfunc / xp.mean(lfunc))
-		hull_.lam = xp.real(hull.lam + delta)
-		arg_v = self.phi + xp.tensordot(hull.Omega, hull_.h, axes=0)
-		err = xp.abs(ifftn(self.lk * fftn(hull_.h)) + hull_.lam + hull_.dv(arg_v, eps)).max()
-		return hull_, err
+		hull.h = xp.real(h_thresh + beta - xp.mean(beta) * lfunc / xp.mean(lfunc))
+		hull.lam = xp.real(hull.lam + delta)
+		arg_v = self.phi + xp.tensordot(hull.Omega, hull.h, axes=0)
+		err = xp.abs(ifftn(self.lk * fftn(hull.h)) + hull.lam + hull.dv(arg_v, eps)).max()
+		return hull, err
 
 	def image_h(self, hull, eps):
 		if self.renormalization:

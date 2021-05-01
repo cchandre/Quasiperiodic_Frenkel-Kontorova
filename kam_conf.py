@@ -5,26 +5,36 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def main():
-	dict_params = {
-		'n': 2 ** 6,
-		'omega0': [0.618033988749895, -1.0],
-		'Omega': [1.0, 0.0],
-		'potential': 'pot1_2d'}
-	dict_params.update({
-		'eps_n': 256,
-		'eps_region': [[0.0, 0.05], [xp.pi/4,  xp.pi/4]],
-		'eps_indx': [0, 1],
-		'eps_type': 'polar'})
 	# dict_params = {
-	# 	'n': 2 ** 8,
-	# 	'omega0': [1.324717957244746, 1.754877666246693, 1.0],
-	# 	'Omega': [1.0, 1.0, -1.0],
-	# 	'potential': 'pot1_3d'}
+	# 	'n': 2 ** 10,
+	# 	'omega0': [0.618033988749895, -1.0],
+	# 	'Omega': [1.0, 0.0],
+	# 	'potential': 'pot1_2d'}
+	# dict_params = {
+	# 	'n': 2 ** 10,
+	# 	'omega0': [0.414213562373095, -1.0],
+	# 	'Omega': [1.0, 0.0],
+	# 	'potential': 'pot1_2d'}
+	# dict_params = {
+	# 	'n': 2 ** 10,
+	# 	'omega0': [0.302775637731995, -1.0],
+	# 	'Omega': [1.0, 0.0],
+	# 	'potential': 'pot1_2d'}
 	# dict_params.update({
-	# 	'eps_n': 256,
-	# 	'eps_region': [[0.0, 0.15], [0.0,  xp.pi/2.0], [0.1, 0.1]],
+	# 	'eps_n': 512,
+	# 	'eps_region': [[0.0, 0.35], [0.0, 0.12]],
 	# 	'eps_indx': [0, 1],
-	# 	'eps_type': 'polar'})
+	# 	'eps_type': 'cartesian'})
+	dict_params = {
+		'n': 2 ** 8,
+		'omega0': [1.324717957244746, 1.754877666246693, 1.0],
+		'Omega': [1.0, 1.0, -1.0],
+		'potential': 'pot1_3d'}
+	dict_params.update({
+		'eps_n': 512,
+		'eps_region': [[0.0, 0.15], [0.0,  0.40], [0.1, 0.1]],
+		'eps_indx': [0, 1],
+		'eps_type': 'cartesian'})
 	dict_params.update({
 		'tolmax': 1e2,
 		'tolmin': 1e-6,
@@ -32,15 +42,15 @@ def main():
 		'maxiter': 50,
 		'threshold': 1e-7,
 		'precision': 64,
-		'save_results': False,
+		'save_results': True,
 		'plot_results': True})
 	dv = {
 		'pot1_2d': lambda phi, eps, Omega: Omega[0] * eps[0] * xp.sin(phi[0]) + eps[1] * (Omega[0] + Omega[1]) * xp.sin(phi[0] + phi[1]),
 		'pot1_3d': lambda phi, eps, Omega: - Omega[0] * eps[0] * xp.sin(phi[0]) - Omega[1] * eps[1] * xp.sin(phi[1]) - Omega[2] * eps[2] * xp.sin(phi[2])
 		}.get(dict_params['potential'], 'pot1_2d')
 	case = ConfKAM(dv, dict_params)
-	data = cv.line(case.eps_region, case, method='critical', display=True)
-	# data = cv.region(case)
+	# data = cv.line(case.eps_region, case, method='critical', display=True)
+	data = cv.region(case)
 
 
 class ConfKAM:
