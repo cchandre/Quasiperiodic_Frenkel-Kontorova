@@ -50,10 +50,10 @@ def main():
 
 class ConfKAM:
 	def __repr__(self):
-		return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
+		return '{self.__class__.__name__}({self.dv, self.DictParams})'.format(self=self)
 
 	def __str__(self):
-		return 'KAM in configuration space ({self.__class__.name__}) with omega0 = {self.omega0} and Omega = {self.Omega}'.format(self=self)
+		return 'KAM in configuration space ({self.__class__.__name__}) with omega0 = {self.omega0} and Omega = {self.Omega}'.format(self=self)
 
 	def __init__(self, dv, dict_params):
 		for key in dict_params:
