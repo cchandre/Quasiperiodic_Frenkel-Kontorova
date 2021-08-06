@@ -6,35 +6,37 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    # dict_params = {
-    # 	'n': 2 ** 9,
-    # 	'omega': 1.0,
-    # 	'alpha': [1.246979603717467, 2.801937735804838],
-    # 	'alpha_perp': [2.801937735804838, -1.246979603717467],
-    # 	'potential': 'pot1_2d'}
-    # dict_params.update({
-    # 	'eps_n': 128,
-    # 	'eps_region': [[0.0, 0.05], [0.0,  xp.pi/2.0]],
-    #     'eps_indx': [0, 1],
-    # 	'eps_type': 'polar'})
     dict_params = {
-        'n': 2 ** 10,
-        'omega': 0.618033988749895,
-        'alpha': [1.0],
-        'potential': 'pot1_1d'}
+    	'n': 2 ** 9,
+    	'omega': 1.0,
+    	'alpha': [1.246979603717467, 2.801937735804838],
+    	'alpha_perp': [2.801937735804838, -1.246979603717467],
+    	'potential': 'pot1_2d'}
     dict_params.update({
-        'eps_n': 512,
-        'eps_region': [[0.0, 2.0], [0.0, 0.8]],
+    	'eps_n': 512,
+    	'eps_region': [[0.0, 0.02], [0.0,  0.004]],
         'eps_indx': [0, 1],
-        'eps_type': 'cartesian'})
+    	'eps_type': 'cartesian'})
+    # dict_params = {
+    #     'n': 2 ** 10,
+    #     'omega': 0.618033988749895,
+    #     'alpha': [1.0],
+    #     'potential': 'pot1_1d'}
+    # dict_params.update({
+    #     'eps_n': 512,
+    #     'eps_region': [[0.0, 2.0], [0.0, 0.8]],
+    #     'eps_indx': [0, 1],
+    #     'eps_type': 'cartesian'})
     dict_params.update({
         'tolmax': 1e5,
         'tolmin': 1e-8,
         'dist_surf': 1e-5,
         'maxiter': 100,
         'threshold': 1e-9,
+        'choice_initial': 'fixed',
         'precision': 64,
-        'save_results': False,
+        'parallelization': True,
+        'save_results': True,
         'plot_results': True})
     dv = {
         'pot1_1d': lambda phi, eps, alpha: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0])),
@@ -47,10 +49,10 @@ def main():
 
 class qpFK:
     def __repr__(self):
-        return '{self.__class__.name__}({self.dv, self.DictParams})'.format(self=self)
+        return '{self.__class__.__name__}({self.dv, self.DictParams})'.format(self=self)
 
     def __str__(self):
-        return 'Quasiperiodic Frenkel-Kontorova ({self.__class__.name__}) model with alpha = {self.alpha} and omega = {self.omega}'.format(self=self)
+        return 'Quasiperiodic Frenkel-Kontorova ({self.__class__.__name__}) model with alpha = {self.alpha} and omega = {self.omega}'.format(self=self)
 
     def __init__(self, dv, dict_params):
         for key in dict_params:
@@ -76,30 +78,31 @@ class qpFK:
         self.rescale_fft = self.precision(self.n ** dim)
         self.threshold *= self.rescale_fft
         ilk = xp.divide(1.0, self.lk, where=self.lk!=0)
-        self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps, self.alpha)) * ilk), 0.0]
+        self.initial_h = lambda eps: [- ifftn(fftn(self.dv(self.phi, eps, self.alpha)) * ilk).real, 0.0]
 
     def refine_h(self, h, lam, eps):
         fft_h = fftn(h)
         fft_h[xp.abs(fft_h) <= self.threshold] = 0.0
-        h_thresh = ifftn(fft_h)
+        fft_h[self.zero_] = 0.0
+        h_thresh = ifftn(fft_h).real
         arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)
         fft_l = 1j * self.alpha_nu * fft_h
         fft_l[self.zero_] = self.rescale_fft
-        lfunc = ifftn(fft_l)
-        epsilon = ifftn(self.lk * fft_h) + lam + self.dv(arg_v, eps, self.alpha)
+        lfunc = ifftn(fft_l).real
+        epsilon = ifftn(self.lk * fft_h).real + self.dv(arg_v, eps, self.alpha) + lam
         fft_leps = fftn(lfunc * epsilon)
-        delta = - fft_leps[self.zero_] / fft_l[self.zero_]
-        w = ifftn((delta * fft_l + fft_leps) * self.sml_div)
-        ll = lfunc * ifftn(fft_l * self.exp_alpha_nu.conj())
+        delta = - fft_leps[self.zero_].real / fft_l[self.zero_].real
+        w = ifftn((delta * fft_l + fft_leps) * self.sml_div).real
+        ll = lfunc * ifftn(fft_l * self.exp_alpha_nu.conj()).real
         fft_wll = fftn(w / ll)
         fft_ill = fftn(1.0 / ll)
-        w0 = - fft_wll[self.zero_] / fft_ill[self.zero_]
-        beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()) * lfunc
-        h = xp.real(h_thresh + beta - xp.mean(beta) * lfunc / xp.mean(lfunc))
-        lam = xp.real(lam + delta)
-        arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)
-        err = xp.abs(ifftn(self.lk * fftn(h)) + lam + self.dv(arg_v, eps, self.alpha)).max()
-        return h, lam, err
+        w0 = - fft_wll[self.zero_].real / fft_ill[self.zero_].real
+        beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()).real
+        h_ = h_thresh + beta * lfunc - xp.mean(beta * lfunc) * lfunc
+        lam_ = lam + delta
+        arg_v = self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_, axes=0)
+        err = xp.abs(ifftn(self.lk * fftn(h_)).real + lam_ + self.dv(arg_v, eps, self.alpha)).max()
+        return h_, lam_, err
 
     def norms(self, h, r=0):
         if hasattr(self, 'alpha_perp'):
