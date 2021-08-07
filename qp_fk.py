@@ -35,7 +35,7 @@ def main():
         'threshold': 1e-9,
         'choice_initial': 'fixed',
         'precision': 64,
-        'parallelization': True,
+        'parallelization': [True, 8],
         'save_results': True,
         'plot_results': True})
     dv = {
