@@ -68,8 +68,8 @@ class qpFK:
     def refine_h(self, h, lam, eps):
         self.set_var(h.shape[0])
         fft_h = fftn(h)
-        fft_h[xp.abs(fft_h) <= self.Threshold * xp.abs(fft_h).max()] = 0.0
         fft_h[self.zero_] = 0.0
+        fft_h[xp.abs(fft_h) <= self.Threshold * xp.abs(fft_h).max()] = 0.0
         h_thresh = ifftn(fft_h).real
         arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_thresh, axes=0)) % (2.0 * xp.pi)
         fft_l = 1j * self.alpha_nu * fft_h
@@ -87,9 +87,9 @@ class qpFK:
         h_ = h_thresh + beta * l - xp.mean(beta * l) * l / xp.mean(l)
         lam_ = lam + delta
         fft_h_ = fftn(h_)
-        tail_norm = xp.abs(fft_h_[self.tail_indx]).max()
         fft_h_[self.zero_] = 0.0
         fft_h_[xp.abs(fft_h_) <= self.Threshold * xp.abs(fft_h_).max()] = 0.0
+        tail_norm = xp.abs(fft_h_[self.tail_indx]).max()
         if self.AdaptSize and (tail_norm >= self.TolMin * xp.abs(fft_h_).max()) and (h.shape[0] < self.Lmax):
             self.set_var(2 * h.shape[0])
             h = ifftn(ifftshift(xp.pad(fftshift(fft_h), self.pad))).real * (2 ** self.dim)
