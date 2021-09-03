@@ -32,7 +32,7 @@ ___
 ####                                                                                           
                                          
 ####                                                                                                           
-- *AdaptL*: boolean; if True, changes the dimension of arrays depending on the tail of the FFT of *h*(*psi*)      
+- *AdaptSize*: boolean; if True, changes the dimension of arrays depending on the tail of the FFT of *h*(*psi*)      
 - *Lmin*: integer; minimum and default value of the dimension of arrays for *h*(*psi*)                           
 - *Lmax*: integer; maximum value of the dimension of arrays for *h*(*psi*) if *AdaptL* is True                   
 ####                                                                                                         
