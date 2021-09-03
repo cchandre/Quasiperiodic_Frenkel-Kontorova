@@ -107,8 +107,8 @@ def compute_region(case):
         eps_list = []
         for _ in range(case.Nxy):
             eps_ = eps_vecs.copy()
-            eps_[:, case.IndxLine[0]] = case.CoordRegion[case.IndxLine[0], 0] + radii * xp.cos(thetas[_]) * (case.CoordRegion[case.IndxLine[0], 1] - case.CoordRegion[case.IndxLine[0], 0])
-            eps_[:, case.IndxLine[1]] = case.CoordRegion[case.IndxLine[1], 0] + radii * xp.sin(thetas[_]) * (case.CoordRegion[case.IndxLine[1], 1] - case.CoordRegion[case.IndxLine[1], 0])
+            eps_[:, case.IndxLine[0]] = radii * xp.cos(thetas[_]) * case.CoordRegion[case.IndxLine[0], 1]
+            eps_[:, case.IndxLine[1]] = radii * xp.sin(thetas[_]) * case.CoordRegion[case.IndxLine[1], 1]
             eps_list.append(eps_)
     convs, iters = [], []
     if case.Parallelization[0]:

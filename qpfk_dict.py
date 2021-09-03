@@ -12,9 +12,9 @@ r = 4
 omega = 0.618033988749895
 alpha = [1.0]
 Dv = lambda phi, eps, alpha: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0]))
-CoordRegion = [[0.0, 2.0], [-0.8, 0.8]]
+CoordRegion = [[0.0, 2.0], [0.0, 0.8]]
 IndxLine = (0, 1)
-PolarAngles = [-xp.pi / 2.0, xp.pi / 2.0]
+PolarAngles = [0.0, xp.pi / 2.0]
 CoordLine = [0.0, 0.028]
 ModesLine = (1, 1)
 DirLine = [1, 1]
@@ -31,16 +31,16 @@ DirLine = [1, 1]
 # ModesLine = (1, 1, 0)
 # DirLine = [1, 5, 0.1]
 
-AdaptL = True
-Lmin = 2 ** 7
-Lmax = 2 ** 11
+AdaptL = False
+Lmin = 2 ** 12
+Lmax = 2 ** 12
 
 TolMax = 1e10
 TolMin = 1e-10
 Threshold = 1e-13
 MaxIter = 100
 
-Type = 'polar'
+Type = 'cartesian'
 ChoiceInitial = 'continuation'
 MethodInitial = 'one_step'
 
@@ -49,7 +49,7 @@ MinEps = 1e-6
 MonitorGrad = False
 
 Precision = 64
-SaveData = False
+SaveData = True
 PlotResults = True
 Parallelization = (True, 4)
 
@@ -61,7 +61,7 @@ dict = {'Method': 'compute_' + Method}
 dict.update({
         'Nxy': Nxy,
         'r': r,
-		'omega': xp.asarray(omega, dtype=Precision),
+		'omega': omega,
 		'alpha': xp.asarray(alpha, dtype=Precision),
 		'Dv': Dv,
 		'CoordRegion': xp.asarray(CoordRegion, dtype=Precision),
