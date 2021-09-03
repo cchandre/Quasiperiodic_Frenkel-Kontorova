@@ -32,8 +32,8 @@ DirLine = [1, 1]
 # DirLine = [1, 5, 0.1]
 
 AdaptL = True
-Lmin = 2 ** 5
-Lmax = 2 ** 10
+Lmin = 2 ** 7
+Lmax = 2 ** 11
 
 TolMax = 1e10
 TolMin = 1e-10
