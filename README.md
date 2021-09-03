@@ -34,7 +34,7 @@ ___
 ####                                                                                                           
 - *AdaptSize*: boolean; if True, changes the dimension of arrays depending on the tail of the FFT of *h*(*psi*)      
 - *Lmin*: integer; minimum and default value of the dimension of arrays for *h*(*psi*)                           
-- *Lmax*: integer; maximum value of the dimension of arrays for *h*(*psi*) if *AdaptL* is True                   
+- *Lmax*: integer; maximum value of the dimension of arrays for *h*(*psi*) if *AdaptSize* is True                   
 ####                                                                                                         
 - *TolMax*: float; value of norm for divergence                                                      
 - *TolMin*: float; value of norm for convergence                                                           
