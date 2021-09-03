@@ -1,14 +1,14 @@
 # Quasiperiodic_FrenkelKontorova (qpFK): Analyticity breakdown for Frenkel-Kontorova models in quasiperiodic media
 
-- [`qpFK_dict.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpFK_dict.py): to be edited to change the parameters of the qpFK computation (see below for a dictionary of parameters)
+- [`qpfk_dict.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpfk_dict.py): to be edited to change the parameters of the qpFK computation (see below for a dictionary of parameters)
 
-- [`qpFK.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpFK.py): contains the qpFK classes and main functions defining the qpFK map
+- [`qpfk.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpfk.py): contains the qpFK classes and main functions defining the qpFK map
 
-- [`qpFK_modules.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpFK_modules.py): contains the methods to execute the qpFK map
+- [`qpfk_modules.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpfk_modules.py): contains the methods to execute the qpFK map
 
-Once [`qpFK_dict.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpFK_dict.py) has been edited with the relevant parameters, run the file as 
+Once [`qpfk_dict.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpfk_dict.py) has been edited with the relevant parameters, run the file as 
 ```sh
-python3.8 qpFK.py
+python3.8 qpfk.py
 ```
 
 ___
@@ -18,8 +18,9 @@ ___
 - *Nxy*: integer; number of points along each line in computations 
 - *r*: integer; order of the Sobolev norm used in `compute_line_norm()`                                        
 ####                                                                                                   
-- *omega0*: array of *n* floats; frequency vector of the invariant torus                                
-- *Omega*: array of *n* floats; vector defining the perturbation in actions                             
+- *omega*: floats; frequency                                
+- *alpha*: array of *n* floats; vector defining the perturbation
+- *alpha_perp* (optional): array of *n* floats; vector perpendicular to alpha                             
 - *Dv*: function; derivative of the *n*-d potential along a line                                               
 - *CoordRegion*: array of floats; min and max values of the amplitudes for each mode of the potential (see *Dv*); used in `compute_region()`
 - *IndxLine*: tuple of integers; indices of the modes to be varied in `compute_region()`                                        
