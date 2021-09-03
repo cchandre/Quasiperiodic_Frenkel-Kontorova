@@ -9,31 +9,31 @@ Method = 'region'
 Nxy = 512
 r = 4
 
-omega = 0.618033988749895
-alpha = [1.0]
-Dv = lambda phi, eps, alpha: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0]))
-CoordRegion = [[0.0, 2.0], [0.0, 0.8]]
-IndxLine = (0, 1)
-PolarAngles = [0.0, xp.pi / 2.0]
-CoordLine = [0.0, 0.028]
-ModesLine = (1, 1)
-DirLine = [1, 1]
-
-# omega = 1.0
-# alpha = [1.246979603717467, 2.801937735804838]
-# alpha_perp = [2.801937735804838, -1.246979603717467]
-# Dv = lambda phi, eps, alpha: alpha[0] * eps[0] * xp.sin(phi[0]) + alpha[1] * eps[1] * xp.sin(phi[1])
-# #Dv = lambda phi, eps, alpha: alpha[0] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[0])) + alpha[1] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
-# CoordRegion = [[0.0, 0.02], [0.0,  0.004]]
+# omega = 0.618033988749895
+# alpha = [1.0]
+# Dv = lambda phi, eps, alpha: - alpha[0] / (2.0 * xp.pi) * (eps[0] * xp.sin(phi[0]) + eps[1] / 2.0 * xp.sin(2.0 * phi[0]))
+# CoordRegion = [[0.0, 2.0], [-0.8, 0.8]]
 # IndxLine = (0, 1)
 # PolarAngles = [0.0, xp.pi / 2.0]
-# CoordLine = [0.0, 0.05]
-# ModesLine = (1, 1, 0)
-# DirLine = [1, 5, 0.1]
+# CoordLine = [0.0, 0.028]
+# ModesLine = (1, 1)
+# DirLine = [1, 1]
 
-AdaptL = False
-Lmin = 2 ** 12
-Lmax = 2 ** 12
+omega = 1.0
+alpha = [1.246979603717467, 2.801937735804838]
+alpha_perp = [2.801937735804838, -1.246979603717467]
+Dv = lambda phi, eps, alpha: alpha[0] * eps[0] * xp.sin(phi[0]) + alpha[1] * eps[1] * xp.sin(phi[1])
+#Dv = lambda phi, eps, alpha: alpha[0] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[0])) + alpha[1] * (eps[0] * xp.sin(2.0 * phi[0] + 2.0 * phi[1]) + eps[1] * xp.sin(phi[1]))
+CoordRegion = [[0.0, 0.02], [0.0,  0.004]]
+IndxLine = (0, 1)
+PolarAngles = [0.0, xp.pi / 2.0]
+CoordLine = [0.0, 0.05]
+ModesLine = (1, 1, 0)
+DirLine = [1, 5, 0.1]
+
+AdaptSize = False
+Lmin = 2 ** 9
+Lmax = 2 ** 9
 
 TolMax = 1e10
 TolMin = 1e-10
@@ -41,7 +41,7 @@ Threshold = 1e-13
 MaxIter = 100
 
 Type = 'cartesian'
-ChoiceInitial = 'continuation'
+ChoiceInitial = 'fixed'
 MethodInitial = 'one_step'
 
 AdaptEps = False
@@ -70,7 +70,7 @@ dict.update({
 		'CoordLine': xp.asarray(CoordLine, dtype=Precision),
 		'ModesLine': xp.asarray(ModesLine),
 		'DirLine': xp.asarray(DirLine),
-		'AdaptL': AdaptL,
+		'AdaptSize': AdaptSize,
 		'Lmin': Lmin,
 		'Lmax': Lmax,
 		'TolMax': TolMax,
