@@ -92,7 +92,6 @@ class qpFK:
         tail_norm = xp.abs(fft_h_[self.tail_indx]).max()
         if self.AdaptSize and (tail_norm >= self.TolMin * xp.abs(fft_h_).max()) and (h.shape[0] < self.Lmax):
             self.set_var(2 * h.shape[0])
-            h = ifftn(ifftshift(xp.pad(fftshift(fft_h), self.pad))).real * (2 ** self.dim)
             fft_h_ = ifftshift(xp.pad(fftshift(fft_h_), self.pad)) * (2 ** self.dim)
         h_ = ifftn(fft_h_).real
         arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_, axes=0)) % (2.0 * xp.pi)
@@ -103,6 +102,9 @@ class qpFK:
             if det_h_ <= self.TolMin:
                 print('\033[31m        warning: non-invertibility...\033[00m')
         return h_, lam_, err
+
+    def pad_h(self, h):
+        return ifftn(ifftshift(xp.pad(fftshift(fftn(h)), self.pad))).real * (2 ** self.dim)
 
     def norms(self, h, r=0):
         self.set_var(h.shape[0])

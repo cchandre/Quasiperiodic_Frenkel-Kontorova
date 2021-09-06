@@ -24,9 +24,11 @@ def point(eps, h, lam, case, gethull=False, display=False):
     it_count = 0
     while (case.TolMax >= err >= case.TolMin) and (it_count <= case.MaxIter):
         h_, lam_, err = case.refine_h(h_, lam_, eps)
+        if h_.shape[0] != h.shape[0]:
+            h = case.pad_h(h)
         it_count += 1
         if display:
-            print('\033[90m        iteration={}   err={} \033[00m'.format(it_count, err))
+            print('\033[90m        iteration={:d}   err={:.3e} \033[00m'.format(it_count, err))
     if err <= case.TolMin:
         it_count = - it_count
     if gethull:
