@@ -89,15 +89,15 @@ class qpFK:
         fft_h_ = fftn(h_)
         fft_h_[self.zero_] = 0.0
         fft_h_[xp.abs(fft_h_) <= self.Threshold * xp.abs(fft_h_).max()] = 0.0
-        tail_norm = xp.abs(fft_h_[self.tail_indx]).max()
-        if self.AdaptSize and (tail_norm >= self.TolMin * xp.abs(fft_h_).max()) and (h.shape[0] < self.Lmax):
+        tail_norm = xp.abs(fft_h_[self.tail_indx]).max() / xp.abs(fft_h_).max()
+        if self.AdaptSize and (tail_norm >= self.TolMin) and (h.shape[0] < self.Lmax):
             self.set_var(2 * h.shape[0])
             fft_h_ = ifftshift(xp.pad(fftshift(fft_h_), self.pad)) * (2 ** self.dim)
         h_ = ifftn(fft_h_).real
         arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_, axes=0)) % (2.0 * xp.pi)
         err = xp.abs(ifftn(self.lk * fft_h_).real + self.Dv(arg_v, eps, self.alpha) + lam_).max()
         if self.MonitorGrad:
-            dh_ = self.id + 2.0 * xp.pi * xp.tensordot(self.alpha, xp.gradient(h_, 2.0 * xp.pi / h.shape[0]), axes=0)
+            dh_ = self.id + 2.0 * xp.pi * xp.tensordot(self.alpha, xp.gradient(h_, 2.0 * xp.pi / h_.shape[0]), axes=0)
             det_h_ = xp.abs(LA.det(xp.moveaxis(dh_, [0, 1], [-2, -1]))).min()
             if det_h_ <= self.TolMin:
                 print('\033[31m        warning: non-invertibility...\033[00m')
@@ -107,7 +107,6 @@ class qpFK:
         return ifftn(ifftshift(xp.pad(fftshift(fftn(h)), self.pad))).real * (2 ** self.dim)
 
     def norms(self, h, r=0):
-        self.set_var(h.shape[0])
         fft_h = fftn(h)
         if hasattr(self, 'alpha_perp'):
             return [xp.sqrt((xp.abs(ifftn(self.alpha_nu ** r * fft_h)) ** 2).sum()), xp.sqrt((xp.abs(ifftn(self.alpha_perp_nu ** r * fft_h)) ** 2).sum())]

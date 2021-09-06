@@ -52,33 +52,33 @@ def compute_line_norm(case, display=True):
     print('\033[92m    {} -- line_norm \033[00m'.format(case.__str__()))
     timestr = time.strftime("%Y%m%d_%H%M")
     epsilon0 = case.CoordLine[0]
-    epsvec = epsilon0 * case.ModesLine * case.DirLine + (1 - case.ModesLine) * case.DirLine
-    h, lam = case.initial_h(epsvec, case.Lmin, case.MethodInitial)
+    eps = epsilon0 * case.ModesLine * case.DirLine + (1 - case.ModesLine) * case.DirLine
+    h, lam = case.initial_h(eps, case.Lmin, case.MethodInitial)
     deps = (case.CoordLine[1] - case.CoordLine[0]) / case.Precision(case.Nxy - 1)
     resultnorm, count_fail = [], 0
     while epsilon0 <= case.CoordLine[1] and (count_fail <= case.MaxIter):
         epsilon = epsilon0 + deps
-        epsvec = epsilon * case.ModesLine * case.DirLine + (1 - case.ModesLine) * case.DirLine
+        eps = epsilon * case.ModesLine * case.DirLine + (1 - case.ModesLine) * case.DirLine
         if case.ChoiceInitial == 'fixed':
-            h, lam = case.initial_h(epsvec, h.shape[0], case.MethodInitial)
-        result, h_, lam_ = point(epsvec, h, lam, case, display=False)
+            h, lam = case.initial_h(eps, h.shape[0], case.MethodInitial)
+        result, h_, lam_ = point(eps, h, lam, case, display=False)
         if result[0] == 1:
             count_fail = 0
             resultnorm.append(xp.concatenate((epsilon, case.norms(h_, case.r)), axis=None))
             if display:
-                print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e} \033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0]))
+                print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    (for L={:d})\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], h_.shape[0]))
             save_data('line_norm', xp.array(resultnorm), timestr, case)
         elif case.AdaptEps:
             while (result[0] == 0) and deps >= case.MinEps:
                 deps /= 5.0
                 epsilon = epsilon0 + deps
-                epsvec = epsilon * case.ModesLine * case.DirLine + (1 - case.ModesLine) * case.DirLine
-                result, h_, lam_ = point(epsvec, h, lam, case, display=False)
+                eps = epsilon * case.ModesLine * case.DirLine + (1 - case.ModesLine) * case.DirLine
+                result, h_, lam_ = point(eps, h, lam, case, display=False)
             if result[0] == 1:
                 count_fail = 0
                 resultnorm.append(xp.concatenate((epsilon, case.norms(h_, case.r)), axis=None))
                 if display:
-                    print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e} \033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0]))
+                    print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    (for L={:d})\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], h_.shape[0]))
                 save_data('line_norm', xp.array(resultnorm), timestr, case)
         if result[0] == 0:
             count_fail += 1
@@ -100,18 +100,18 @@ def compute_region(case):
     if case.Type == 'cartesian':
         eps_list = []
         for _ in range(case.Nxy):
-            eps_ = eps_vecs.copy()
-            eps_[:, case.IndxLine[1]] = eps_vecs[_, case.IndxLine[1]]
-            eps_list.append(eps_)
+            eps = eps_vecs.copy()
+            eps[:, case.IndxLine[1]] = eps_vecs[_, case.IndxLine[1]]
+            eps_list.append(eps)
     elif case.Type == 'polar':
         thetas = xp.linspace(case.PolarAngles[0], case.PolarAngles[1], case.Nxy, dtype=case.Precision)
         radii = xp.linspace(0.0, 1.0, case.Nxy, dtype=case.Precision)
         eps_list = []
         for _ in range(case.Nxy):
-            eps_ = eps_vecs.copy()
-            eps_[:, case.IndxLine[0]] = radii * xp.cos(thetas[_]) * case.CoordRegion[case.IndxLine[0], 1]
-            eps_[:, case.IndxLine[1]] = radii * xp.sin(thetas[_]) * case.CoordRegion[case.IndxLine[1], 1]
-            eps_list.append(eps_)
+            eps = eps_vecs.copy()
+            eps[:, case.IndxLine[0]] = radii * xp.cos(thetas[_]) * case.CoordRegion[case.IndxLine[0], 1]
+            eps[:, case.IndxLine[1]] = radii * xp.sin(thetas[_]) * case.CoordRegion[case.IndxLine[1], 1]
+            eps_list.append(eps)
     convs, iters = [], []
     if case.Parallelization[0]:
         if case.Parallelization[1] == 'all':
