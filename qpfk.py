@@ -70,7 +70,7 @@ class qpFK:
         fft_h = self.fft_h(h)
         arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)) % (2.0 * xp.pi)
         fft_l = 1j * self.alpha_nu * fft_h
-        l = i1.0 + fftn(fft_l).real
+        l = 1.0 + fftn(fft_l).real
         epsilon = ifftn(self.lk * fft_h).real + self.Dv(arg_v, eps, self.alpha) + lam
         fft_leps = fftn(l * epsilon)
         delta = - fft_leps[self.zero_].real / self.rescale_fft
@@ -96,12 +96,12 @@ class qpFK:
                 print('\033[31m        warning: non-invertibility...\033[00m')
         return h_, lam_, err
 
-	def fft_h(self, h):
-		fft_h = fftn(h)
-		fft_h[self.zero_] = 0.0
-		fft_h[xp.abs(fft_h) <= self.Threshold * xp.abs(fft_h).max()] = 0.0
-		return fft_h
-
+    def fft_h(self, h):
+        fft_h = fftn(h)
+        fft_h[self.zero_] = 0.0
+        fft_h[xp.abs(fft_h) <= self.Threshold * xp.abs(fft_h).max()] = 0.0
+        return fft_h
+        
     def pad_h(self, h):
         return ifftn(ifftshift(xp.pad(fftshift(self.fft_h(h)), self.pad))).real * (2 ** self.dim)
 
