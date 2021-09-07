@@ -33,14 +33,15 @@ class qpFK:
         ind_phi = self.dim * (xp.linspace(0.0, 2.0 * xp.pi, L, endpoint=False, dtype=self.Precision),)
         nu = xp.meshgrid(*ind_nu, indexing='ij')
         self.phi = xp.meshgrid(*ind_phi, indexing='ij')
-        self.alpha_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha, nu)
+        self.Omega = 2.0 * xp.pi * self.alpha
+        self.Omega_nu = xp.einsum('i,i...->...', self.Omega, nu)
         if hasattr(self, 'alpha_perp'):
-            self.alpha_perp_nu = xp.einsum('i,i...->...', self.alpha_perp, nu)
-        self.exp_alpha_nu = xp.exp(1j * self.omega * self.alpha_nu)
-        self.sml_div = self.exp_alpha_nu - 1.0
+            self.Omega_perp_nu = 2.0 * xp.pi * xp.einsum('i,i...->...', self.alpha_perp, nu)
+        self.exp_Omega_nu = xp.exp(1j * self.omega * self.Omega_nu)
+        self.sml_div = self.exp_Omega_nu - 1.0
         self.sml_div = xp.divide(1.0, self.sml_div, where=self.sml_div!=0)
         self.sml_div[self.zero_] = 0.0
-        self.lk = 2.0 * (xp.cos(self.omega * self.alpha_nu) - 1.0)
+        self.lk = 2.0 * (xp.cos(self.omega * self.Omega_nu) - 1.0)
         self.ilk = xp.divide(1.0, self.lk, where=self.lk!=0)
         self.ilk[self.zero_] = 0.0
         self.rescale_fft = self.Precision(L ** self.dim)
@@ -52,9 +53,9 @@ class qpFK:
         if method == 'zero':
             return [xp.zeros_like(self.lk), 0.0]
         elif method == 'one_step':
-            return [- ifftn(self.fft_h(self.Dv(self.phi, eps, self.alpha)) * self.ilk).real, 0.0]
+            return [- ifftn(self.fft_h(self.Dv(self.phi, eps, self.Omega)) * self.ilk).real, 0.0]
         else:
-            h = - ifftn(self.fft_h(self.Dv(self.phi, eps, self.alpha)) * self.ilk).real
+            h = - ifftn(self.fft_h(self.Dv(self.phi, eps, self.Omega)) * self.ilk).real
             sol = root(self.conjug_eq, h.flatten(), args=(eps, L), method=method, options={'fatol': 1e-9})
             if sol.success:
                 return [sol.x.reshape((L, L)), 0.0]
@@ -62,35 +63,36 @@ class qpFK:
                 return [h, 0.0]
 
     def conjug_eq(self, h, eps, L):
-        arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h.reshape(self.dim * (L,)), axes=0)) % (2.0 * xp.pi)
-        return (ifftn(self.lk * self.fft_h(h.reshape(self.dim * (L,)))).real + self.Dv(arg_v, eps, self.alpha)).flatten()
+        arg_v = (self.phi + xp.tensordot(self.Omega, h.reshape(self.dim * (L,)), axes=0)) % (2.0 * xp.pi)
+        return (ifftn(self.lk * self.fft_h(h.reshape(self.dim * (L,)))).real + self.Dv(arg_v, eps, self.Omega)).flatten()
 
     def refine_h(self, h, lam, eps):
         self.set_var(h.shape[0])
         fft_h = self.fft_h(h)
-        arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h, axes=0)) % (2.0 * xp.pi)
-        fft_l = 1j * self.alpha_nu * fft_h
-        l = 1.0 + fftn(fft_l).real
-        epsilon = ifftn(self.lk * fft_h).real + self.Dv(arg_v, eps, self.alpha) + lam
+        arg_v = (self.phi + xp.tensordot(self.Omega, h, axes=0)) % (2.0 * xp.pi)
+        fft_l = 1j * self.Omega_nu * fft_h
+        fft_l[self.zero_] = self.rescale_fft
+        l = ifftn(fft_l).real
+        epsilon = ifftn(self.lk * fft_h).real + self.Dv(arg_v, eps, self.Omega) + lam
         fft_leps = fftn(l * epsilon)
         delta = - fft_leps[self.zero_].real / self.rescale_fft
         w = ifftn((delta * fft_l + fft_leps) * self.sml_div).real
-        ll = l * ifftn(fft_l * self.exp_alpha_nu.conj()).real
+        ll = l * ifftn(fft_l * self.exp_Omega_nu.conj()).real
         fft_wll = fftn(w / ll)
         fft_ill = fftn(1.0 / ll)
         w0 = - fft_wll[self.zero_].real / fft_ill[self.zero_].real
         beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()).real
         fft_h = self.fft_h(h + beta * l - xp.mean(beta * l) * l)
         lam_ = lam + delta
-        tail_norm = xp.abs(fft_h[self.tail_indx]).max() / self.rescale_fft
+        tail_norm = xp.abs(fft_h[self.tail_indx]).sum() / self.rescale_fft
         if self.AdaptSize and (tail_norm >= self.Threshold) and (h.shape[0] < self.Lmax):
             self.set_var(2 * h.shape[0])
-            fft_h_ = ifftshift(xp.pad(fftshift(fft_h), self.pad)) * (2 ** self.dim)
+            fft_h = ifftshift(xp.pad(fftshift(fft_h), self.pad)) * (2 ** self.dim)
         h_ = ifftn(fft_h).real
-        arg_v = (self.phi + 2.0 * xp.pi * xp.tensordot(self.alpha, h_, axes=0)) % (2.0 * xp.pi)
-        err = xp.abs(ifftn(self.lk * fft_h).real + self.Dv(arg_v, eps, self.alpha) + lam_).max()
+        arg_v = (self.phi + xp.tensordot(self.Omega, h_, axes=0)) % (2.0 * xp.pi)
+        err = xp.abs(ifftn(self.lk * fft_h).real + self.Dv(arg_v, eps, self.Omega) + lam_).max()
         if self.MonitorGrad:
-            dh_ = self.id + 2.0 * xp.pi * xp.tensordot(self.alpha, xp.gradient(h_, 2.0 * xp.pi / h_.shape[0]), axes=0)
+            dh_ = self.id + xp.tensordot(self.Omega, xp.gradient(h_, 2.0 * xp.pi / self.Precision(h_.shape[0])), axes=0)
             det_h_ = xp.abs(LA.det(xp.moveaxis(dh_, [0, 1], [-2, -1]))).min()
             if det_h_ <= self.TolMin:
                 print('\033[31m        warning: non-invertibility...\033[00m')
@@ -101,16 +103,16 @@ class qpFK:
         fft_h[self.zero_] = 0.0
         fft_h[xp.abs(fft_h) <= self.Threshold * xp.abs(fft_h).max()] = 0.0
         return fft_h
-        
+
     def pad_h(self, h):
         return ifftn(ifftshift(xp.pad(fftshift(self.fft_h(h)), self.pad))).real * (2 ** self.dim)
 
     def norms(self, h, r=0):
         fft_h = self.fft_h(h)
         if hasattr(self, 'alpha_perp'):
-            return [xp.sqrt((xp.abs(ifftn(self.alpha_nu ** r * fft_h)) ** 2).sum()), xp.sqrt((xp.abs(ifftn(self.alpha_perp_nu ** r * fft_h)) ** 2).sum())]
+            return [xp.sqrt((xp.abs(ifftn(self.Omega_nu ** r * fft_h)) ** 2).sum()), xp.sqrt((xp.abs(ifftn(self.Omega_perp_nu ** r * fft_h)) ** 2).sum())]
         else:
-            return xp.sqrt((xp.abs(ifftn(self.alpha_nu ** r * fft_h)) ** 2).sum())
+            return xp.sqrt((xp.abs(ifftn(self.Omega_nu ** r * fft_h)) ** 2).sum())
 
 if __name__ == "__main__":
     main()
