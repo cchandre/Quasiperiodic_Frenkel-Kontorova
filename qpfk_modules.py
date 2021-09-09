@@ -35,7 +35,7 @@ def point(eps, h, lam, case, gethull=False, display=False):
         it_count = - it_count
     if gethull:
         timestr = time.strftime("%Y%m%d_%H%M")
-        save_data('hull', h_, timestr, case)
+        save_data('hull', h_, timestr, case, display=True)
     return [int(err <= case.TolMin), it_count], h_, lam_, hr
 
 def line(eps_list, case, display=False):
@@ -68,7 +68,7 @@ def compute_line_norm(case, display=True):
             count_fail = 0
             resultnorm.append(xp.concatenate((epsilon, case.norms(h_, case.r)), axis=None))
             if display:
-                print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (for L={:d}, after {:d} iterations)\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0], - result[1]))
+                print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (L={:d}, {:d}it)\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0], - result[1]))
             save_data('line_norm', xp.array(resultnorm), timestr, case)
         elif case.AdaptEps:
             while (result[0] == 0) and deps >= case.MinEps:
@@ -80,7 +80,7 @@ def compute_line_norm(case, display=True):
                 count_fail = 0
                 resultnorm.append(xp.concatenate((epsilon, case.norms(h_, case.r)), axis=None))
                 if display:
-                    print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (for L={:d}, after {:d} iterations)\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0], - result[1]))
+                    print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (L={:d}, {:d}it)\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0], - result[1]))
                 save_data('line_norm', xp.array(resultnorm), timestr, case)
         if result[0] == 0:
             count_fail += 1
@@ -88,6 +88,7 @@ def compute_line_norm(case, display=True):
             h, lam = h_.copy(), lam_
         epsilon0 = epsilon
     resultnorm = xp.array(resultnorm)
+    save_data('line_norm', xp.array(resultnorm), timestr, case, display=True)
     if case.PlotResults and resultnorm.size != 0:
         fig, ax = plt.subplots(1, 1)
         ax.semilogy(resultnorm[:, 0], resultnorm[:, 1], linewidth=2)
@@ -125,12 +126,14 @@ def compute_region(case):
         for conv, iter in tqdm(pool.imap(line_, iterable=range(case.Nxy)), total=case.Nxy):
             convs.append(conv)
             iters.append(iter)
+            save_data('region', xp.array(convs), timestr, case, info=xp.array(iters))
     else:
         for _ in trange(case.Nxy):
             conv, iter = line(eps_list[_], case)
             convs.append(conv)
             iters.append(iter)
-    save_data('region', xp.array(convs), timestr, case, info=xp.array(iters))
+            save_data('region', xp.array(convs), timestr, case, info=xp.array(iters))
+    save_data('region', xp.array(convs), timestr, case, info=xp.array(iters), display=True)
     if case.PlotResults:
         divnorm = colors.TwoSlopeNorm(vmin=xp.amin(xp.array(iters)), vcenter=0.0, vmax=xp.amax(xp.array(iters)))
         if (case.Type == 'cartesian'):
@@ -147,7 +150,7 @@ def compute_region(case):
             fig.colorbar(im)
     return xp.array(convs)
 
-def save_data(name, data, timestr, case, info=[]):
+def save_data(name, data, timestr, case, info=[], display=False):
     if case.SaveData:
         mdic = case.DictParams.copy()
         del mdic['Precision']
@@ -156,4 +159,5 @@ def save_data(name, data, timestr, case, info=[]):
         mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
         name_file = type(case).__name__ + '_' + name + '_' + timestr + '.mat'
         savemat(name_file, mdic)
-        print('\033[90m        Results saved in {} \033[00m'.format(name_file))
+        if display:
+            print('\033[90m        Results saved in {} \033[00m'.format(name_file))

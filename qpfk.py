@@ -84,7 +84,7 @@ class qpFK:
         beta = ifftn((fft_wll + w0 * fft_ill) * self.sml_div.conj()).real
         fft_h = self.fft_h(h + beta * l - xp.mean(beta * l) * l)
         lam_ = lam + delta
-        tail_norm = xp.abs(fft_h[self.tail_indx]).sum() / self.rescale_fft
+        tail_norm = xp.abs(fft_h[self.tail_indx]).max() / self.rescale_fft
         if self.AdaptSize and (tail_norm >= self.Threshold) and (h.shape[0] < self.Lmax):
             self.set_var(2 * h.shape[0])
 			fft_h = ifftshift(xp.pad(fftshift(self.fft_h(h)), self.pad)) * (2 ** self.dim)
