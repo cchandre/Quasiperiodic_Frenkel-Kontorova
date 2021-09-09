@@ -27,9 +27,10 @@ def point(eps, h, lam, case, gethull=False, display=False):
         h_, lam_, err = case.refine_h(h_, lam_, eps)
         if h_.shape[0] != hr.shape[0]:
             hr = case.pad_h(hr)
-        it_count += 1
-        if display:
-            print('\033[34m              iteration={:d}   err={:.3e} \033[00m'.format(it_count, err))
+        else:
+            it_count += 1
+            if display:
+                print('\033[34m              iteration={:d}   err={:.3e} \033[00m'.format(it_count, err))
     if err <= case.TolMin:
         it_count = - it_count
     if gethull:
@@ -67,7 +68,7 @@ def compute_line_norm(case, display=True):
             count_fail = 0
             resultnorm.append(xp.concatenate((epsilon, case.norms(h_, case.r)), axis=None))
             if display:
-                print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (for L={:d})\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0]))
+                print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (for L={:d}, after {:d} iterations)\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0], - result[1]))
             save_data('line_norm', xp.array(resultnorm), timestr, case)
         elif case.AdaptEps:
             while (result[0] == 0) and deps >= case.MinEps:
@@ -79,7 +80,7 @@ def compute_line_norm(case, display=True):
                 count_fail = 0
                 resultnorm.append(xp.concatenate((epsilon, case.norms(h_, case.r)), axis=None))
                 if display:
-                    print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (for L={:d})\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0]))
+                    print('\033[90m        epsilon={:.6f}    norm_{:d}={:.3e}    max_h={:.2e}    (for L={:d}, after {:d} iterations)\033[00m'.format(epsilon, case.r, case.norms(h_, case.r)[0], xp.abs(h_).max(), h_.shape[0], - result[1]))
                 save_data('line_norm', xp.array(resultnorm), timestr, case)
         if result[0] == 0:
             count_fail += 1
