@@ -87,13 +87,13 @@ class qpFK:
         tail_norm = xp.abs(fft_h[self.tail_indx]).max() / self.rescale_fft
         if self.AdaptSize and (tail_norm >= self.Threshold) and (h.shape[0] < self.Lmax):
             self.set_var(2 * h.shape[0])
-			fft_h = ifftshift(xp.pad(fftshift(self.fft_h(h)), self.pad)) * (2 ** self.dim)
-			lam_ = lam
+            fft_h = ifftshift(xp.pad(fftshift(self.fft_h(h)), self.pad)) * (2 ** self.dim)
+            lam_ = lam
         h_ = ifftn(fft_h).real
         arg_v = (self.phi + xp.tensordot(self.Omega, h_, axes=0)) % (2.0 * xp.pi)
         err = xp.abs(ifftn(self.lk * fft_h).real + self.Dv(arg_v, eps, self.Omega) + lam_).max()
         if self.AdaptSize and (tail_norm >= self.Threshold) and (h.shape[0] >= self.Lmax):
-			err = self.TolMax ** 2
+            err = self.TolMax ** 2
         if self.MonitorGrad:
             dh_ = self.id + xp.tensordot(self.Omega, xp.gradient(h_, 2.0 * xp.pi / self.Precision(h_.shape[0])), axes=0)
             det_h_ = xp.abs(LA.det(xp.moveaxis(dh_, [0, 1], [-2, -1]))).min()
