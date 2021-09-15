@@ -6,7 +6,7 @@ import numpy as xp
 
 Method = 'region'
 #Method = 'line_norm'
-Nxy = 100
+Nxy = 1024
 r = 4
 
 # omega = 0.618033988749895
@@ -34,15 +34,15 @@ DirLine = [1, 5]
 
 AdaptSize = True
 Lmin = 2 ** 6
-Lmax = 2 ** 9
+Lmax = 2 ** 11
 
 TolMax = 1e10
 TolMin = 1e-8
 Threshold = 1e-10
 MaxIter = 100
 
-Type = 'cartesian'
-ChoiceInitial = 'fixed'
+Type = 'polar'
+ChoiceInitial = 'continuation'
 MethodInitial = 'one_step'
 
 AdaptEps = False
@@ -50,9 +50,9 @@ MinEps = 1e-6
 MonitorGrad = False
 
 Precision = 64
-SaveData = False
-PlotResults = True
-Parallelization = (True, 4)
+SaveData = True
+PlotResults = False
+Parallelization = (True, 64)
 
 ########################################################################################################################
 ##                                                DO NOT EDIT BELOW                                                   ##
