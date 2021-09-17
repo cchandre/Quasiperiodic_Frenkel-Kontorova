@@ -6,7 +6,7 @@ import numpy as xp
 
 Method = 'region'
 #Method = 'line_norm'
-Nxy = 1024
+Nxy = 512
 r = 4
 
 # omega = 0.618033988749895
@@ -27,14 +27,14 @@ Dv = lambda phi, eps, omega: omega[0] / (2.0 * xp.pi) * eps[0] * xp.sin(phi[0]) 
 CoordRegion = [[0.0, 0.02], [0.0,  0.004]]
 #CoordRegion = [[0.008, 0.014], [0.0025,  0.0035]]
 IndxLine = (0, 1)
-PolarAngles = [0.0, xp.pi / 2.0]
+PolarAngles = [0.6, 1.1]
 CoordLine = [0.0, 0.05]
 ModesLine = (1, 1)
 DirLine = [1, 5]
 
 AdaptSize = True
 Lmin = 2 ** 6
-Lmax = 2 ** 11
+Lmax = 2 ** 9
 
 TolMax = 1e10
 TolMin = 1e-8
@@ -51,8 +51,8 @@ MonitorGrad = False
 
 Precision = 64
 SaveData = True
-PlotResults = False
-Parallelization = (True, 64)
+PlotResults = True
+Parallelization = (True, 4)
 
 ########################################################################################################################
 ##                                                DO NOT EDIT BELOW                                                   ##
