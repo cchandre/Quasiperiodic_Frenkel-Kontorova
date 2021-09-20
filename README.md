@@ -66,5 +66,6 @@ For more information: <cristel.chandre@univ-amu.fr>
 1. T. Blass, R. de la Llave, *The analyticity breakdown for Frenkel-Kontorova models in quasi-periodic media: numerical explorations*, [Journal of Statistical Physics 150, 1183 (2013)](https://dx.doi.org/10.1007/s10955-013-0718-8)
 
 
-**Example:**
-![Example](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpFK_example.png)
+**Example: Figure 3(A) of Ref.[4]**
+
+<img src="https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpFK_example.png" alt="Example" width="200"/>
