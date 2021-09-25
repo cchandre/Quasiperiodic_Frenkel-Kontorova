@@ -8,7 +8,7 @@
 
 Once [`qpfk_dict.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpfk_dict.py) has been edited with the relevant parameters, run the file as 
 ```sh
-python3.8 qpfk.py
+python3 qpfk.py
 ```
 
 ___
