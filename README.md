@@ -1,4 +1,4 @@
-# Quasiperiodic_FrenkelKontorova (qpFK): Analyticity breakdown for Frenkel-Kontorova models in quasiperiodic media
+# Quasiperiodic_FrenkelKontorova: Analyticity breakdown for Frenkel-Kontorova models in quasiperiodic media
 
 - [`qpfk_dict.py`](https://github.com/cchandre/Quasiperiodic_Frenkel-Kontorova/blob/main/qpfk_dict.py): to be edited to change the parameters of the qpFK computation (see below for a dictionary of parameters)
 
