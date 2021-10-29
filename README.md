@@ -55,7 +55,7 @@ ___
 - *Parallelization*: tuple (boolean, int); True for parallelization, int is the number of cores to be used (set int='all' for all of the cores)
 ####
 ---
-For more information: <cristel.chandre@univ-amu.fr>
+For more information: <cristel.chandre@cnrs.fr>
 
 
 **References:**
