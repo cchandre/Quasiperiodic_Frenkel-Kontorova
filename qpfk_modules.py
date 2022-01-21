@@ -183,7 +183,7 @@ def save_data(name, data, timestr, case, info=[], display=False):
         del mdic['Precision']
         mdic.update({'data': data, 'info': info})
         date_today = date.today().strftime(" %B %d, %Y")
-        mdic.update({'date': date_today, 'author': 'cristel.chandre@univ-amu.fr'})
+        mdic.update({'date': date_today, 'author': 'cristel.chandre@cnrs.fr'})
         name_file = type(case).__name__ + '_' + name + '_' + timestr + '.mat'
         savemat(name_file, mdic)
         if display:
